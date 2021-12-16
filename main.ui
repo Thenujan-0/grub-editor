@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>452</width>
-    <height>321</height>
+    <width>348</width>
+    <height>269</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="edit_configurations">
        <attribute name="title">
@@ -27,8 +27,14 @@
        <layout class="QGridLayout" name="gridLayout">
         <item row="0" column="0">
          <layout class="QVBoxLayout" name="verticalLayout">
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout">
+            <property name="bottomMargin">
+             <number>20</number>
+            </property>
             <item>
              <widget class="QLabel" name="lbl_grub_timeout">
               <property name="text">
@@ -41,14 +47,42 @@
             </item>
            </layout>
           </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <property name="bottomMargin">
+             <number>20</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label">
+              <property name="text">
+               <string>Grub timeout style</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="comboBoxTimeoutStyle">
+              <item>
+               <property name="text">
+                <string>hidden</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>menu</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn_set">
+            <property name="text">
+             <string>set</string>
+            </property>
+           </widget>
+          </item>
          </layout>
-        </item>
-        <item row="1" column="0">
-         <widget class="QPushButton" name="btn_set">
-          <property name="text">
-           <string>Set</string>
-          </property>
-         </widget>
         </item>
        </layout>
       </widget>
@@ -79,7 +113,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>452</width>
+     <width>348</width>
      <height>30</height>
     </rect>
    </property>

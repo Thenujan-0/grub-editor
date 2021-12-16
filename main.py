@@ -1,5 +1,6 @@
 from PyQt5 import QtCore ,QtWidgets, uic
 import sys
+from functools import partial
 import subprocess
 file_loc='/etc/default/grub'
 import os
@@ -15,14 +16,14 @@ def getValue(name):
         start_index =data.find(name)
         end_index =data[start_index+len(name):].find('\n')+start_index+len(name)
         print('end_index',end_index)
-        print(data[start_index+13:end_index])
+        print(data[start_index+len(name):end_index])
         if start_index <0:
             return "None"
         else:
             if end_index <0:
-                return data[start_index+13:]
+                return data[start_index+len(name):]
             else:
-                return data[start_index+13:end_index]
+                return data[start_index+len(name):end_index]
 
 
 def setValue(name,val):
@@ -37,7 +38,8 @@ def setValue(name,val):
     with open(f'{HOME}/.cache/grub_editor/temp.txt','w') as file:
         file.write(data)
     subprocess.Popen([f'pkexec sh -c \' cp -f  "{HOME}/.cache/grub_editor/temp.txt"  '+write_file +' && sudo update-grub \' '],shell=True)
-        
+
+
 
 def clearLayout(layout):
     if layout is not None:
@@ -53,10 +55,23 @@ class Ui(QtWidgets.QMainWindow):
         super(Ui, self).__init__()
         uic.loadUi('main.ui',self)
         self.show()
+        self.setUiElements()
+        
+    def setUiElements(self):
         self.ledit_grub_timeout.setText(getValue('GRUB_TIMEOUT='))
+        
+        if getValue('GRUB_TIMEOUT_STYLE=')=='hidden':
+            self.comboBoxTimeoutStyle.setCurrentIndex(0)
+        elif getValue('GRUB_TIMEOUT_STYLE=')=='menu':
+            self.comboBoxTimeoutStyle.setCurrentIndex(1)
+            
+            
         self.createSnapshotList()
         self.btn_set.clicked.connect(self.btn_set_callback)
-        
+    
+    def saveConfs(self):
+        setValue('GRUB_TIMEOUT=',self.ledit_grub_timeout.text())
+    
     def createSnapshot(self):
         with open(file_loc) as file:
             data= file.read()
@@ -70,15 +85,22 @@ class Ui(QtWidgets.QMainWindow):
 
 
     def btn_set_callback(self):
-        setValue('GRUB_TIMEOUT=',self.ledit_grub_timeout.text())
+        self.saveConfs()
 
     
-    def viewCallbackCreator(self,arg):
-        def func():
-            global file_loc
-            file_loc= f'{HOME}/.grub_editor/snapshots/'+arg
-            self.ledit_grub_timeout.setText(getValue('GRUB_TIMEOUT='))
-        return func
+    def btn_view_callback(self,arg):
+        global file_loc
+        print(arg)
+        file_loc= f'{HOME}/.grub_editor/snapshots/'+arg
+        self.setUiElements()
+        if self.verticalLayout.takeAt(3) is None:
+            self.lbl_snapshot_view= QtWidgets.QLabel(self.edit_configurations)
+            self.lbl_snapshot_view.setObjectName('lbl_snapshot_view')
+            self.lbl_snapshot_view.setText('You are currently looking at snapshot from '+arg)
+            self.verticalLayout.addWidget(self.lbl_snapshot_view)
+        else:
+            self.lbl_snapshot_view.setText('You are currently looking at snapshot from '+arg)
+                
     
     def deleteCallbackCreator(self,arg):
         def func():
@@ -119,7 +141,7 @@ class Ui(QtWidgets.QMainWindow):
             self.pushButton = QtWidgets.QPushButton(self.conf_snapshots)
             self.pushButton.setObjectName(f"btn_view{number}")
             self.pushButton.setText('view')
-            self.pushButton.clicked.connect(self.viewCallbackCreator(line))
+            self.pushButton.clicked.connect(partial(self.btn_view_callback,line))
             self.HLayouts_list[-1].addWidget(self.pushButton)
             self.pushButton_3 = QtWidgets.QPushButton(self.conf_snapshots)
             self.pushButton_3.setObjectName(f"btn_delete{number}")
@@ -131,7 +153,7 @@ class Ui(QtWidgets.QMainWindow):
             self.pushButton_2.setText('set')
             self.HLayouts_list[-1].addWidget(self.pushButton_2)
             
-            
+            # print(self.VLayout_snapshot)
             self.VLayout_snapshot.addLayout(self.HLayouts_list[-1])
         
 app =QtWidgets.QApplication(sys.argv)
