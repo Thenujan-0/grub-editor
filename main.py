@@ -2,16 +2,20 @@ from PyQt5 import QtCore ,QtWidgets, uic
 import sys
 from functools import partial
 import subprocess
+import threading
+
+
 file_loc='/etc/default/grub'
 import os
 HOME =os.getenv('HOME')
 subprocess.Popen([f'mkdir -p {HOME}/.grub_editor/snapshots'],shell=True)
 from datetime import datetime as dt
-
+from time import sleep
 #! has to be changed on release
 write_file='/opt/grub_fake.txt'
 def getValue(name):
     with open(file_loc) as file:
+        print(file_loc,'file_loc')
         data =file.read()
         start_index =data.find(name)
         end_index =data[start_index+len(name):].find('\n')+start_index+len(name)
@@ -57,6 +61,7 @@ class Ui(QtWidgets.QMainWindow):
         self.show()
         self.setUiElements()
         
+        
     def setUiElements(self):
         self.ledit_grub_timeout.setText(getValue('GRUB_TIMEOUT='))
         
@@ -87,28 +92,68 @@ class Ui(QtWidgets.QMainWindow):
     def btn_set_callback(self):
         self.saveConfs()
 
-    
+    def btn_rename_callback(self,number):
+        pass
     def btn_view_callback(self,arg):
         global file_loc
         print(arg)
         file_loc= f'{HOME}/.grub_editor/snapshots/'+arg
         self.setUiElements()
-        if self.verticalLayout.takeAt(3) is None:
+
+        if self.verticalLayout.itemAt(3) is None:
             self.lbl_snapshot_view= QtWidgets.QLabel(self.edit_configurations)
             self.lbl_snapshot_view.setObjectName('lbl_snapshot_view')
             self.lbl_snapshot_view.setText('You are currently looking at snapshot from '+arg)
             self.verticalLayout.addWidget(self.lbl_snapshot_view)
+            self.lbl_snapshot_view.setText('You are currently not 😎looking at snapshot from '+arg)
+            
         else:
+            self.verticalLayout.itemAt(3)
             self.lbl_snapshot_view.setText('You are currently looking at snapshot from '+arg)
                 
-    
+    def set_btn_callback_creator(self,line):
+        def funci(self):
+            subprocess.run([f'pkexec cp -f  "{HOME}/.grub_editor/snapshots/{line}"  '+write_file],shell=True)
+            subprocess.Popen([f'sudo update-grub'],shell=True)
+        return funci
+            
     def deleteCallbackCreator(self,arg):
         def func():
+            string =f'rm {HOME}/.grub_editor/snapshots/{arg}'
+            print(string)
             subprocess.Popen([f'rm {HOME}/.grub_editor/snapshots/{arg}'],shell=True)
-            self.ledit_grub_timeout.setText(getValue('GRUB_TIMEOUT='))
-            self.createSnapshotList()
+            global file_loc
+            print(file_loc,'file_loc after delete')
+            print(f'{HOME}/.grub_editor/snapshots/{arg}','condition check string')
+            if file_loc == f'{HOME}/.grub_editor/snapshots/{arg}':
+                file_loc='/etc/default/grub'
+                print(file_loc,'file_loc after delete and before set ui elems')
+                print(self.verticalLayout.itemAt(3),'before if')
+                print(self.verticalLayout.itemAt(3),'before if')
+                print(self.verticalLayout.itemAt(3),'before if')
+                if self.verticalLayout.itemAt(3):
+                    print(self.verticalLayout.itemAt(3))
+                    self.verticalLayout.itemAt(3).widget().deleteLater()
+                    print(file_loc,'file_loc after delete and before set ui elems')
+            self.setUiElements()
         return func
-                
+    def btn_rename_callback(self,number):
+        btn = self.sender()
+        if btn.text() == 'rename':
+            self.ledit_ = QtWidgets.QLineEdit(self.conf_snapshots)
+            self.ledit_.setObjectName("ledit_")
+            self.targetLabel=self.HLayouts_list[number].itemAt(0).widget()
+            print(number)
+            print(self.targetLabel)
+            btn.parent().layout().replaceWidget(self.targetLabel,self.ledit_)
+            self.targetLabel.deleteLater()
+            btn.setText('set name')
+        else:
+            pass
+        
+        
+        
+               
     def createSnapshotList(self):
         contents = subprocess.check_output([f'ls {HOME}/.grub_editor/snapshots/'],shell=True).decode()
         print(contents)
@@ -123,8 +168,7 @@ class Ui(QtWidgets.QMainWindow):
         self.btn_create_snapshot.clicked.connect(self.createSnapshot)
         self.VLayout_snapshot.addWidget(self.btn_create_snapshot)
         for line in lines:
-            #first number is 1
-            number +=1
+            #first number is 0
             
             self.HLayouts_list.append(QtWidgets.QHBoxLayout())
             self.HLayouts_list[-1].setObjectName(f'HLayout_snapshot{number}')
@@ -137,6 +181,7 @@ class Ui(QtWidgets.QMainWindow):
             self.pushButton_3 = QtWidgets.QPushButton(self.conf_snapshots)
             self.pushButton_3.setObjectName(f"btn_rename{number}")
             self.pushButton_3.setText('rename')
+            self.pushButton_3.clicked.connect(partial(self.btn_rename_callback,number))
             self.HLayouts_list[-1].addWidget(self.pushButton_3)
             self.pushButton = QtWidgets.QPushButton(self.conf_snapshots)
             self.pushButton.setObjectName(f"btn_view{number}")
@@ -151,11 +196,16 @@ class Ui(QtWidgets.QMainWindow):
             self.pushButton_2 = QtWidgets.QPushButton(self.conf_snapshots)
             self.pushButton_2.setObjectName(f"btn_set{number}")
             self.pushButton_2.setText('set')
+            self.pushButton_2.clicked.connect(self.set_btn_callback_creator(line))
             self.HLayouts_list[-1].addWidget(self.pushButton_2)
             
             # print(self.VLayout_snapshot)
             self.VLayout_snapshot.addLayout(self.HLayouts_list[-1])
-        
+            
+            #first number is 0
+            
+            number +=1
+
 app =QtWidgets.QApplication(sys.argv)
 window=Ui()
 app.exec_()
