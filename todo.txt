@@ -1,0 +1,2 @@
+1. make set GRUB_TIMEOUT_STYLE functional
+2.set name button function when clicked after typing the name or pressed enter from the QLineEdit

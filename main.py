@@ -12,7 +12,7 @@ subprocess.Popen([f'mkdir -p {HOME}/.grub_editor/snapshots'],shell=True)
 from datetime import datetime as dt
 from time import sleep
 #! has to be changed on release
-write_file='/opt/grub_fake.txt'
+write_file='/etc/default/grub'
 def getValue(name):
     with open(file_loc) as file:
         print(file_loc,'file_loc')
@@ -57,12 +57,21 @@ def clearLayout(layout):
 class Ui(QtWidgets.QMainWindow):
     def __init__(self):
         super(Ui, self).__init__()
+        
         uic.loadUi('main.ui',self)
         self.show()
         self.setUiElements()
         
+        #dictionary to store qlineEdits for rename .stored widget is qlineEditWidget. key is index of the row
+        self.rename_line_edits={}
+        
+        #dictionary for storing labels (rename) . key is index of the row
+        self.btn_set.clicked.connect(self.btn_set_callback)
+        self.rename_labels={}
+        
         
     def setUiElements(self):
+        """reloads the ui elements that should be reloaded"""
         self.ledit_grub_timeout.setText(getValue('GRUB_TIMEOUT='))
         
         if getValue('GRUB_TIMEOUT_STYLE=')=='hidden':
@@ -72,10 +81,12 @@ class Ui(QtWidgets.QMainWindow):
             
             
         self.createSnapshotList()
-        self.btn_set.clicked.connect(self.btn_set_callback)
+        
     
     def saveConfs(self):
+        
         setValue('GRUB_TIMEOUT=',self.ledit_grub_timeout.text())
+        
     
     def createSnapshot(self):
         with open(file_loc) as file:
@@ -90,7 +101,28 @@ class Ui(QtWidgets.QMainWindow):
 
 
     def btn_set_callback(self):
-        self.saveConfs()
+        print('set button callback here')
+        grub_timeout_value=self.ledit_grub_timeout.text()
+        print(grub_timeout_value,'grub_timeout_value')
+        print(grub_timeout_value=='0','grub_timeout_value==0')
+        print(grub_timeout_value=='0','grub_timeout_value==0')
+        # sleep(5)
+        if grub_timeout_value=='0':
+            print(grub_timeout_value=='0','grub_timeout_value==0 before what')
+            self.ledit_grub_timeout.setText('Use 0.0 instead of 0 ')
+            print(grub_timeout_value=='0','grub_timeout_value==0 after  what')
+            self.ledit_grub_timeout.selectAll()
+            self.ledit_grub_timeout.setFocus()
+        else:
+            try:
+                float(grub_timeout_value)
+                self.saveConfs()
+            except Exception as e:
+                print(e)
+                self.ledit_grub_timeout.setText('not a number error')
+                self.ledit_grub_timeout.selectAll()
+                self.ledit_grub_timeout.setFocus()
+        
 
     def btn_rename_callback(self,number):
         pass
@@ -113,8 +145,8 @@ class Ui(QtWidgets.QMainWindow):
                 
     def set_btn_callback_creator(self,line):
         def funci(self):
-            subprocess.run([f'pkexec cp -f  "{HOME}/.grub_editor/snapshots/{line}"  '+write_file],shell=True)
-            subprocess.Popen([f'sudo update-grub'],shell=True)
+            subprocess.run([f'pkexec sh -c  \' cp -f  "{HOME}/.grub_editor/snapshots/{line}" && sudo update-grub  \' '+write_file],shell=True)
+            self.setUiElements()
         return funci
             
     def deleteCallbackCreator(self,arg):
@@ -141,23 +173,45 @@ class Ui(QtWidgets.QMainWindow):
         btn = self.sender()
         if btn.text() == 'rename':
             self.ledit_ = QtWidgets.QLineEdit(self.conf_snapshots)
-            self.ledit_.setObjectName("ledit_")
+            self.ledit_.setObjectName(f"ledit_{number}")
+            self.rename_line_edits[number]=self.ledit_
             self.targetLabel=self.HLayouts_list[number].itemAt(0).widget()
+            
+            self.rename_labels[number] = self.targetLabel
             print(number)
             print(self.targetLabel)
             btn.parent().layout().replaceWidget(self.targetLabel,self.ledit_)
             self.targetLabel.deleteLater()
+            self.ledit_.setText(self.lines[number])
+            self.ledit_.selectAll()
+            
+            self.ledit_.setFocus()
             btn.setText('set name')
-        else:
-            pass
-        
+            
+        elif btn.text() == 'set name':
+            self.targetLabel=self.rename_labels[number]
+            self.ledit_ = self.rename_line_edits[number]
+            text = self.ledit_.text()
+            line=self.lines[number]
+            subprocess.Popen([f'mv \'{HOME}/.grub_editor/snapshots/{line}\' \'{HOME}/.grub_editor/snapshots/{text}\' '],shell=True)
+            self.lbl_1 =QtWidgets.QLabel(self.conf_snapshots)
+            self.lbl_1.setObjectName(f"label{number}")
+            self.lbl_1.setText(self.lines[number])
+            
+            print(self.ledit_)
+            # print(self.targetLabel.parent())
+            btn.parent().layout().replaceWidget(self.ledit_,self.lbl_1)
+            self.ledit_.deleteLater()
+            btn.setText('rename')
+            self.setUiElements()
+            
         
         
                
     def createSnapshotList(self):
         contents = subprocess.check_output([f'ls {HOME}/.grub_editor/snapshots/'],shell=True).decode()
         print(contents)
-        lines =contents.splitlines()
+        self.lines =contents.splitlines()
 
         self.HLayouts_list=[]
         number =0
@@ -167,7 +221,7 @@ class Ui(QtWidgets.QMainWindow):
         self.btn_create_snapshot.setText("create a snapshot now")
         self.btn_create_snapshot.clicked.connect(self.createSnapshot)
         self.VLayout_snapshot.addWidget(self.btn_create_snapshot)
-        for line in lines:
+        for line in self.lines:
             #first number is 0
             
             self.HLayouts_list.append(QtWidgets.QHBoxLayout())
