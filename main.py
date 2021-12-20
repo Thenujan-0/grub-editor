@@ -126,6 +126,11 @@ class Ui(QtWidgets.QMainWindow):
 
     def btn_rename_callback(self,number):
         pass
+    
+    def btn_show_orginal_callback(self):
+        #! todo revert to original configuration
+        pass
+    
     def btn_view_callback(self,arg):
         global file_loc
         print(arg)
@@ -133,11 +138,60 @@ class Ui(QtWidgets.QMainWindow):
         self.setUiElements()
 
         if self.verticalLayout.itemAt(3) is None:
-            self.lbl_snapshot_view= QtWidgets.QLabel(self.edit_configurations)
+            #create frame
+            self.frame = QtWidgets.QFrame(self.edit_configurations)
+            self.frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
+            self.frame.setFrameShadow(QtWidgets.QFrame.Raised)
+            self.frame.setObjectName("frame")
+            
+            
+            
+            self.lbl_snapshot_view= QtWidgets.QLabel(self.frame)
             self.lbl_snapshot_view.setObjectName('lbl_snapshot_view')
             self.lbl_snapshot_view.setText('You are currently looking at snapshot from '+arg)
-            self.verticalLayout.addWidget(self.lbl_snapshot_view)
-            self.lbl_snapshot_view.setText('You are currently not 😎looking at snapshot from '+arg)
+            # self.lbl_snapshot_view.setStyleSheet('QLabel{border:1px solid #ff0000;\
+            #                                      border-radius: 10px 10px 10px 10px;}')
+            self.lbl_snapshot_view.setWordWrap(True)
+            self.lbl_snapshot_view.setMinimumSize(100,30)
+            self.HLayout_=QtWidgets.QHBoxLayout()
+            
+            
+            # the '.' in the string is there to avoid QLabel getting affected
+            self.frame.setStyleSheet('.QFrame{border:1px solid #ff0000;\
+                                                 border-radius: 10px 10px 10px 10px;}')
+            
+
+            
+            
+            
+            self.HLayout_.setObjectName('HLayout_')
+            # self.HLayout_.addWidget(self.lbl_snapshot_view)
+            
+            #button to reverto to original
+            self.btn_show_orginal =QtWidgets.QPushButton(self.frame)
+            self.btn_show_orginal.setObjectName('btn_show_original')
+            self.btn_show_orginal.setText('Show original configuration')
+            # self.HLayout_.addWidget(self.btn_show_orginal)
+            
+            
+            
+            self.gridLayout_3 = QtWidgets.QGridLayout(self.frame)
+            self.gridLayout_3.setObjectName("gridLayout_3")
+            self.gridLayout_3.addWidget(self.lbl_snapshot_view, 0, 0, 1, 1)
+            self.gridLayout_3.addWidget(self.btn_show_orginal, 0, 1, 1, 1)
+            self.verticalLayout.addWidget(self.frame)
+            
+            
+            
+            # add 20 px margin to top of the HLayout_
+            # self.HLayout_.setContentsMargins(0,0,20, 0)
+            
+            # self.verticalLayout.addLayout(self.HLayout_)
+            self.lbl_snapshot_view.setText('You are currently looking at snapshot from '+arg)
+            
+            
+            
+            
             
         else:
             self.verticalLayout.itemAt(3)
