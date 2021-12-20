@@ -1,0 +1,2 @@
+print(len('GRUB_DEFAULT=saved\
+GRUB_TIMEOUT=1413241'))

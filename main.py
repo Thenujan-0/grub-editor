@@ -12,7 +12,12 @@ subprocess.Popen([f'mkdir -p {HOME}/.grub_editor/snapshots'],shell=True)
 from datetime import datetime as dt
 from time import sleep
 #! has to be changed on release
-write_file='/etc/default/grub'
+write_file='/opt/grub_fake.txt'
+write_file=file_loc
+
+commands=[]
+to_write_data=None
+
 def getValue(name):
     with open(file_loc) as file:
         print(file_loc,'file_loc')
@@ -31,17 +36,22 @@ def getValue(name):
 
 
 def setValue(name,val):
-    with open(file_loc) as file:
-        data =file.read()
-        start_index =data.find(name)
-        end_index =data[start_index+13:].find('\n')+start_index+13
-        data = data.replace(name+data[start_index+13:end_index],name+str(val))
+    global to_write_data
+    if to_write_data is None:
+        with open(file_loc) as file:
+            to_write_data =file.read()
+    
+    start_index =to_write_data.find(name)
+    end_index =to_write_data[start_index+len(name):].find('\n')+start_index+len(name)
+    print(start_index,'start_index',to_write_data[start_index:start_index+len(name)])
+    print('end_index',end_index)
+    
+    to_write_data = to_write_data.replace(name+to_write_data[start_index+len(name):end_index],name+str(val))
     
     subprocess.Popen([f'mkdir -p {HOME}/.cache/grub_editor/'],shell=True)
     subprocess.Popen([f'touch {HOME}/.cache/grub_editor/grub.txt'],shell=True)
     with open(f'{HOME}/.cache/grub_editor/temp.txt','w') as file:
-        file.write(data)
-    subprocess.Popen([f'pkexec sh -c \' cp -f  "{HOME}/.cache/grub_editor/temp.txt"  '+write_file +' && sudo update-grub \' '],shell=True)
+        file.write(to_write_data)
 
 
 
@@ -82,12 +92,13 @@ class Ui(QtWidgets.QMainWindow):
             
         self.createSnapshotList()
         
-    
+    #! combine all the commands to be executed into a string and then do it
     def saveConfs(self):
         
         setValue('GRUB_TIMEOUT=',self.ledit_grub_timeout.text())
-        
-    
+        setValue('GRUB_TIMEOUT_STYLE=',['hidden', 'menu'][self.comboBoxTimeoutStyle.currentIndex()])
+        subprocess.Popen([f'pkexec sh -c \' cp -f  "{HOME}/.cache/grub_editor/temp.txt"  '+write_file +' && sudo update-grub \' '],shell=True)
+
     def createSnapshot(self):
         with open(file_loc) as file:
             data= file.read()
@@ -103,9 +114,6 @@ class Ui(QtWidgets.QMainWindow):
     def btn_set_callback(self):
         print('set button callback here')
         grub_timeout_value=self.ledit_grub_timeout.text()
-        print(grub_timeout_value,'grub_timeout_value')
-        print(grub_timeout_value=='0','grub_timeout_value==0')
-        print(grub_timeout_value=='0','grub_timeout_value==0')
         # sleep(5)
         if grub_timeout_value=='0':
             print(grub_timeout_value=='0','grub_timeout_value==0 before what')
@@ -200,17 +208,16 @@ class Ui(QtWidgets.QMainWindow):
             self.verticalLayout.itemAt(3)
             self.lbl_snapshot_view.setText('You are currently looking at snapshot from '+arg)
                 
-    def set_btn_callback_creator(self,line):
-        def funci(self):
-            subprocess.run([f'pkexec sh -c  \' cp -f  "{HOME}/.grub_editor/snapshots/{line}" && sudo update-grub  \' '+write_file],shell=True)
-            self.setUiElements()
-        return funci
+    def set_btn_callback(self,line):
+        print(f'pkexec sh -c  \' cp -f  "{HOME}/.grub_editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
+        subprocess.run([f'pkexec sh -c  \' cp -f  "{HOME}/.grub_editor/snapshots/{line}" {write_file}&& sudo update-grub  \' '],shell=True)
+        self.setUiElements()
             
     def deleteCallbackCreator(self,arg):
         def func():
             string =f'rm {HOME}/.grub_editor/snapshots/{arg}'
             print(string)
-            subprocess.Popen([f'rm {HOME}/.grub_editor/snapshots/{arg}'],shell=True)
+            subprocess.Popen([f'rm \'{HOME}/.grub_editor/snapshots/{arg}\''],shell=True)
             global file_loc
             print(file_loc,'file_loc after delete')
             print(f'{HOME}/.grub_editor/snapshots/{arg}','condition check string')
@@ -307,7 +314,7 @@ class Ui(QtWidgets.QMainWindow):
             self.pushButton_2 = QtWidgets.QPushButton(self.conf_snapshots)
             self.pushButton_2.setObjectName(f"btn_set{number}")
             self.pushButton_2.setText('set')
-            self.pushButton_2.clicked.connect(self.set_btn_callback_creator(line))
+            self.pushButton_2.clicked.connect(partial(self.set_btn_callback,line))
             self.HLayouts_list[-1].addWidget(self.pushButton_2)
             
             # print(self.VLayout_snapshot)
