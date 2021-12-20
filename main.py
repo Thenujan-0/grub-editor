@@ -128,9 +128,11 @@ class Ui(QtWidgets.QMainWindow):
         pass
     
     def btn_show_orginal_callback(self):
-        #! todo revert to original configuration
-        pass
-    
+        global file_loc
+        file_loc='/etc/default/grub'
+        self.setUiElements()
+        self.verticalLayout.itemAt(3).widget().deleteLater()
+        
     def btn_view_callback(self,arg):
         global file_loc
         print(arg)
@@ -171,6 +173,7 @@ class Ui(QtWidgets.QMainWindow):
             self.btn_show_orginal =QtWidgets.QPushButton(self.frame)
             self.btn_show_orginal.setObjectName('btn_show_original')
             self.btn_show_orginal.setText('Show original configuration')
+            self.btn_show_orginal.clicked.connect(self.btn_show_orginal_callback)
             # self.HLayout_.addWidget(self.btn_show_orginal)
             
             
