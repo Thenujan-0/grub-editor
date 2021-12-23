@@ -132,9 +132,7 @@ class Ui(QtWidgets.QMainWindow):
                 self.ledit_grub_timeout.setFocus()
         
 
-    def btn_rename_callback(self,number):
-        pass
-    
+
     def btn_show_orginal_callback(self):
         global file_loc
         file_loc='/etc/default/grub'
@@ -235,9 +233,12 @@ class Ui(QtWidgets.QMainWindow):
         return func
     def btn_rename_callback(self,number):
         btn = self.sender()
+        print('btn_rename_callback was called',btn.text())
         if btn.text() == 'rename':
             self.ledit_ = QtWidgets.QLineEdit(self.conf_snapshots)
             self.ledit_.setObjectName(f"ledit_{number}")
+            print(self.HLayouts_list[number].itemAt(1).widget().text())
+            self.ledit_.returnPressed.connect(self.HLayouts_list[number].itemAt(1).widget().click)
             self.rename_line_edits[number]=self.ledit_
             self.targetLabel=self.HLayouts_list[number].itemAt(0).widget()
             
@@ -291,7 +292,8 @@ class Ui(QtWidgets.QMainWindow):
             self.HLayouts_list.append(QtWidgets.QHBoxLayout())
             self.HLayouts_list[-1].setObjectName(f'HLayout_snapshot{number}')
             
-            #!needs change variables cannot be used
+            
+            #set all the buttons that appear on conf_snapshots (for a single snapshots)
             self.lineEdit = QtWidgets.QLabel(self.conf_snapshots)
             self.lineEdit.setObjectName(f"lbl_snapshot{number}")
             self.lineEdit.setText(line)
@@ -317,7 +319,6 @@ class Ui(QtWidgets.QMainWindow):
             self.pushButton_2.clicked.connect(partial(self.set_btn_callback,line))
             self.HLayouts_list[-1].addWidget(self.pushButton_2)
             
-            # print(self.VLayout_snapshot)
             self.VLayout_snapshot.addLayout(self.HLayouts_list[-1])
             
             #first number is 0

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=GrubEditor
+Exec=/opt/BreakTimer/grub_editor
+Terminal=false
+Type=Application
+Icon=grub_editor
+StartupWMClass=GrubEditor
+Comment=Edit grub configuration
+Categories=Utility;
