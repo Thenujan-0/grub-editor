@@ -1,0 +1,2 @@
+1.view entries of grub menu 
+2.ability to set default boot entry
