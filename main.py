@@ -80,6 +80,19 @@ class Ui(QtWidgets.QMainWindow):
         self.rename_labels={}
         
         
+        
+        #load the entries
+        import find_entries
+        self.main_entries = find_entries.main_entries
+        
+        for entry in self.main_entries:
+            if len(entry.sub_entries) ==0:
+                self.comboBox_default_entry.addItem(entry.title)
+            else:
+                for sub in entry.sub_entries:
+                    self.comboBox_default_entry.addItem(sub.parent.title+' >'+sub.title)
+        
+        
     def setUiElements(self):
         """reloads the ui elements that should be reloaded"""
         self.ledit_grub_timeout.setText(getValue('GRUB_TIMEOUT='))
@@ -137,7 +150,7 @@ class Ui(QtWidgets.QMainWindow):
         global file_loc
         file_loc='/etc/default/grub'
         self.setUiElements()
-        self.verticalLayout.itemAt(3).widget().deleteLater()
+        self.verticalLayout.itemAt(4).widget().deleteLater()
         
     def btn_view_callback(self,arg):
         global file_loc
@@ -145,7 +158,7 @@ class Ui(QtWidgets.QMainWindow):
         file_loc= f'{HOME}/.grub_editor/snapshots/'+arg
         self.setUiElements()
 
-        if self.verticalLayout.itemAt(3) is None:
+        if self.verticalLayout.itemAt(4) is None:
             #create frame
             self.frame = QtWidgets.QFrame(self.edit_configurations)
             self.frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
