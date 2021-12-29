@@ -74,7 +74,7 @@ class Ui(QtWidgets.QMainWindow):
         
         uic.loadUi(f'{PATH}/main.ui',self)
         self.show()
-        self.setUiElements()
+        
         
         #dictionary to store qlineEdits for rename .stored widget is qlineEditWidget. key is index of the row
         self.rename_line_edits={}
@@ -88,13 +88,19 @@ class Ui(QtWidgets.QMainWindow):
         #load the entries
         import find_entries
         self.main_entries = find_entries.main_entries
-        
+
+        self.all_entries =[]
         for entry in self.main_entries:
             if len(entry.sub_entries) ==0:
                 self.comboBox_grub_default.addItem(entry.title)
+                self.all_entries.append(entry.title)
             else:
                 for sub in entry.sub_entries:
                     self.comboBox_grub_default.addItem(sub.parent.title+' >'+sub.title)
+                    self.all_entries.append(sub.parent.title+' >'+sub.title)
+        print(self.all_entries)
+        self.setUiElements()
+        
         
         
     def setUiElements(self):
@@ -105,11 +111,17 @@ class Ui(QtWidgets.QMainWindow):
             self.comboBoxTimeoutStyle.setCurrentIndex(0)
         elif getValue('GRUB_TIMEOUT_STYLE=')=='menu':
             self.comboBoxTimeoutStyle.setCurrentIndex(1)
-        
-        if getValue('GRUB_DEFAULT=')=='saved':
+        grub_default_val =getValue('GRUB_DEFAULT=')
+        if grub_default_val[0]=='"':
+            grub_default_val= grub_default_val[1:]
+        if grub_default_val[-1]=='"':
+            grub_default_val=grub_default_val[:-1]
+            
+        if grub_default_val=='saved':
             self.comboBox_grub_default.setCurrentIndex(0)
         else:
-            print(getValue('GRUB_DEFAULT='))
+            
+            self.comboBox_grub_default.setCurrentIndex(self.all_entries.index(grub_default_val)+1)
             
             
         self.createSnapshotList()
@@ -118,15 +130,19 @@ class Ui(QtWidgets.QMainWindow):
         
         setValue('GRUB_TIMEOUT=',self.ledit_grub_timeout.text())
         setValue('GRUB_TIMEOUT_STYLE=',['hidden', 'menu'][self.comboBoxTimeoutStyle.currentIndex()])
-        self.grub_default =str(self.comboBox_grub_default.currentIndex)
+        self.grub_default =str(self.comboBox_grub_default.currentText())
         
-        if self.grub_default.count('>') ==1:
+        if self.grub_default.count('>') <=1:
             pass
-            #? todo
-            print(self.grub_default)
+            if '<' in self.grub_default:
+                pass
+                #?todo
+            else:
+                setValue('GRUB_DEFAULT=','\"'+self.grub_default+'\"')
             #set the value of grub_default
         else:
-            print('Error occured when setting grub default as combobox text has more than one\' <\'  ')
+            print('Error occured when setting grub default as combobox text has more than one  1\' <\'  ')
+            print(self.grub_default)
         
         
         try:
@@ -134,7 +150,7 @@ class Ui(QtWidgets.QMainWindow):
             self.lbl_status.setText('Saved successfully')
         except:
             print('error trying to save the configurations')
-            self.lbl_status.setText('Error occured when saving')
+            self.lbl_status.setText('An error occured when saving')
 
         
         
@@ -173,14 +189,15 @@ class Ui(QtWidgets.QMainWindow):
                 self.ledit_grub_timeout.selectAll()
                 self.ledit_grub_timeout.setFocus()
         
+        #! todo test if this works
         if not self.verticalLayout.itemAt(4) or not isinstance(self.verticalLayout.itemAt(4).widget(),QtWidgets.QFrame): 
             self.lbl_status= QtWidgets.QLabel(self.edit_configurations)
-            self.lbl_status.setText('saving')
+            self.lbl_status.setText('saving do not close')
             self.verticalLayout.addWidget(self.lbl_status)
         else:
-            self.lbl_status.setText('saving')
+            self.lbl_status.setText('saving do not close')
         
-        print(self.interrupt)
+        print(self.interrupt,'interrupt')
         if not self.interrupt:
             self.saveConfs()
             
