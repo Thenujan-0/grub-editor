@@ -1,9 +1,21 @@
 [Desktop Entry]
-Name=GrubEditor
-Exec=/opt/BreakTimer/grub_editor
+Categories=Utility;System;
+Comment[en_US]=GUI to edit grub
+Comment=GUI to edit grub
+Exec=/opt/grub_editor/main.py
+GenericName[en_US]=
+GenericName=
+Icon=manjaro
+MimeType=
+Name[en_US]=Grub Editor
+Name=Grub Editor
+Path=
+StartupNotify=true
+StartupWMClass=Grub Editor
 Terminal=false
+TerminalOptions=
 Type=Application
-Icon=grub_editor
-StartupWMClass=GrubEditor
-Comment=Edit grub configuration
-Categories=Utility;
+X-DBUS-ServiceName=
+X-DBUS-StartupType=
+X-KDE-SubstituteUID=false
+X-KDE-Username=

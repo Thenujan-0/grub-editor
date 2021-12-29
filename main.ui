@@ -57,7 +57,13 @@
              </widget>
             </item>
             <item>
-             <widget class="QComboBox" name="comboBox_default_entry"/>
+             <widget class="QComboBox" name="comboBox_grub_default">
+              <item>
+               <property name="text">
+                <string>saved</string>
+               </property>
+              </item>
+             </widget>
             </item>
            </layout>
           </item>

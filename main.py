@@ -1,22 +1,26 @@
+#!/usr/bin/python
 from PyQt5 import QtCore ,QtWidgets, uic
 import sys
 from functools import partial
 import subprocess
 import threading
-
-
-file_loc='/etc/default/grub'
-import os
-HOME =os.getenv('HOME')
-subprocess.Popen([f'mkdir -p {HOME}/.grub_editor/snapshots'],shell=True)
 from datetime import datetime as dt
 from time import sleep
-#! has to be changed on release
+import os
+
+file_loc='/etc/default/grub'
+
+
+
 write_file='/opt/grub_fake.txt'
 write_file=file_loc
 
-commands=[]
+HOME =os.getenv('HOME')
+PATH = os.path.dirname(os.path.realpath(__file__))
 to_write_data=None
+
+
+subprocess.Popen([f'mkdir -p {HOME}/.grub_editor/snapshots'],shell=True)
 
 def getValue(name):
     with open(file_loc) as file:
@@ -68,7 +72,7 @@ class Ui(QtWidgets.QMainWindow):
     def __init__(self):
         super(Ui, self).__init__()
         
-        uic.loadUi('main.ui',self)
+        uic.loadUi(f'{PATH}/main.ui',self)
         self.show()
         self.setUiElements()
         
@@ -87,10 +91,10 @@ class Ui(QtWidgets.QMainWindow):
         
         for entry in self.main_entries:
             if len(entry.sub_entries) ==0:
-                self.comboBox_default_entry.addItem(entry.title)
+                self.comboBox_grub_default.addItem(entry.title)
             else:
                 for sub in entry.sub_entries:
-                    self.comboBox_default_entry.addItem(sub.parent.title+' >'+sub.title)
+                    self.comboBox_grub_default.addItem(sub.parent.title+' >'+sub.title)
         
         
     def setUiElements(self):
@@ -101,17 +105,40 @@ class Ui(QtWidgets.QMainWindow):
             self.comboBoxTimeoutStyle.setCurrentIndex(0)
         elif getValue('GRUB_TIMEOUT_STYLE=')=='menu':
             self.comboBoxTimeoutStyle.setCurrentIndex(1)
+        
+        if getValue('GRUB_DEFAULT=')=='saved':
+            self.comboBox_grub_default.setCurrentIndex(0)
+        else:
+            print(getValue('GRUB_DEFAULT='))
             
             
         self.createSnapshotList()
         
-    #! combine all the commands to be executed into a string and then do it
     def saveConfs(self):
         
         setValue('GRUB_TIMEOUT=',self.ledit_grub_timeout.text())
         setValue('GRUB_TIMEOUT_STYLE=',['hidden', 'menu'][self.comboBoxTimeoutStyle.currentIndex()])
-        subprocess.Popen([f'pkexec sh -c \' cp -f  "{HOME}/.cache/grub_editor/temp.txt"  '+write_file +' && sudo update-grub \' '],shell=True)
+        self.grub_default =str(self.comboBox_grub_default.currentIndex)
+        
+        if self.grub_default.count('>') ==1:
+            pass
+            #? todo
+            print(self.grub_default)
+            #set the value of grub_default
+        else:
+            print('Error occured when setting grub default as combobox text has more than one\' <\'  ')
+        
+        
+        try:
+            subprocess.check_output([f'pkexec sh -c \' cp -f  "{HOME}/.cache/grub_editor/temp.txt"  '+write_file +' && sudo update-grub \' '],shell=True)
+            self.lbl_status.setText('Saved successfully')
+        except:
+            print('error trying to save the configurations')
+            self.lbl_status.setText('Error occured when saving')
 
+        
+        
+        
     def createSnapshot(self):
         with open(file_loc) as file:
             data= file.read()
@@ -127,6 +154,7 @@ class Ui(QtWidgets.QMainWindow):
     def btn_set_callback(self):
         print('set button callback here')
         grub_timeout_value=self.ledit_grub_timeout.text()
+        self.interrupt=None
         # sleep(5)
         if grub_timeout_value=='0':
             print(grub_timeout_value=='0','grub_timeout_value==0 before what')
@@ -137,28 +165,43 @@ class Ui(QtWidgets.QMainWindow):
         else:
             try:
                 float(grub_timeout_value)
-                self.saveConfs()
+                
             except Exception as e:
+                self.interrupt=1
                 print(e)
                 self.ledit_grub_timeout.setText('not a number error')
                 self.ledit_grub_timeout.selectAll()
                 self.ledit_grub_timeout.setFocus()
         
-
+        if not self.verticalLayout.itemAt(4) or not isinstance(self.verticalLayout.itemAt(4).widget(),QtWidgets.QFrame): 
+            self.lbl_status= QtWidgets.QLabel(self.edit_configurations)
+            self.lbl_status.setText('saving')
+            self.verticalLayout.addWidget(self.lbl_status)
+        else:
+            self.lbl_status.setText('saving')
+        
+        print(self.interrupt)
+        if not self.interrupt:
+            self.saveConfs()
+            
 
     def btn_show_orginal_callback(self):
         global file_loc
         file_loc='/etc/default/grub'
         self.setUiElements()
-        self.verticalLayout.itemAt(4).widget().deleteLater()
-        
+        if 'QFrame' in str(self.verticalLayout.itemAt(4).widget()):
+            self.verticalLayout.itemAt(4).widget().deleteLater()
+        else:
+            self.verticalLayout.itemAt(5).widget().deleteLater()
+            
+            
     def btn_view_callback(self,arg):
         global file_loc
         print(arg)
         file_loc= f'{HOME}/.grub_editor/snapshots/'+arg
         self.setUiElements()
-
-        if self.verticalLayout.itemAt(4) is None:
+        print(self.verticalLayout.itemAt(4).widget(),'de one')
+        if self.verticalLayout.itemAt(4) is None or not 'QFrame' in str(self.verticalLayout.itemAt(4).widget()):
             #create frame
             self.frame = QtWidgets.QFrame(self.edit_configurations)
             self.frame.setFrameShape(QtWidgets.QFrame.StyledPanel)

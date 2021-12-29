@@ -2,7 +2,6 @@ cmd_find_entries=["awk -F\\' '$1==\"menuentry \" || $1==\"submenu \" {print i++ 
 import traceback
 import subprocess
 out =subprocess.getoutput(cmd_find_entries)
-print(out)
 
 class MainEntry():
     parent=None
@@ -51,6 +50,4 @@ for i in range(len(lines)):
 
 for entry in main_entries:
     entry.set_parents_for_children()
-    entry.echo()
-            
     
