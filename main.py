@@ -7,7 +7,7 @@ import threading
 from datetime import datetime as dt
 from time import sleep
 import os
-
+from subprocess import PIPE, Popen
 file_loc='/etc/default/grub'
 
 
@@ -24,12 +24,9 @@ subprocess.Popen([f'mkdir -p {HOME}/.grub_editor/snapshots'],shell=True)
 
 def getValue(name):
     with open(file_loc) as file:
-        print(file_loc,'file_loc')
         data =file.read()
         start_index =data.find(name)
         end_index =data[start_index+len(name):].find('\n')+start_index+len(name)
-        print('end_index',end_index)
-        print(data[start_index+len(name):end_index])
         if start_index <0:
             return "None"
         else:
@@ -47,8 +44,6 @@ def setValue(name,val):
     
     start_index =to_write_data.find(name)
     end_index =to_write_data[start_index+len(name):].find('\n')+start_index+len(name)
-    print(start_index,'start_index',to_write_data[start_index:start_index+len(name)])
-    print('end_index',end_index)
     
     to_write_data = to_write_data.replace(name+to_write_data[start_index+len(name):end_index],name+str(val))
     
@@ -85,6 +80,7 @@ class Ui(QtWidgets.QMainWindow):
         
         
         
+        
         #load the entries
         import find_entries
         self.main_entries = find_entries.main_entries
@@ -100,6 +96,9 @@ class Ui(QtWidgets.QMainWindow):
                     self.all_entries.append(sub.parent.title+' >'+sub.title)
         print(self.all_entries)
         self.setUiElements()
+        
+        
+        self.lbl_details=None
         
         
         
@@ -131,26 +130,46 @@ class Ui(QtWidgets.QMainWindow):
         setValue('GRUB_TIMEOUT=',self.ledit_grub_timeout.text())
         setValue('GRUB_TIMEOUT_STYLE=',['hidden', 'menu'][self.comboBoxTimeoutStyle.currentIndex()])
         self.grub_default =str(self.comboBox_grub_default.currentText())
-        
         if self.grub_default.count('>') <=1:
             pass
-            if '<' in self.grub_default:
-                pass
-                #?todo
+            if '>' in self.grub_default:
+                front_part=self.grub_default[:self.grub_default.find(' >')]
+                last_part=self.grub_default[self.grub_default.find('>'):]
+                to_write='"'+front_part+last_part+'"'
+                setValue('GRUB_DEFAULT=',to_write)
+                print(to_write+'part to be written')
             else:
                 setValue('GRUB_DEFAULT=','\"'+self.grub_default+'\"')
             #set the value of grub_default
         else:
-            print('Error occured when setting grub default as combobox text has more than one  1\' <\'  ')
+            print('Error occured when setting grub default as combobox text has more than one  1\' >\'  ')
             print(self.grub_default)
         
-        
-        try:
-            subprocess.check_output([f'pkexec sh -c \' cp -f  "{HOME}/.cache/grub_editor/temp.txt"  '+write_file +' && sudo update-grub \' '],shell=True)
-            self.lbl_status.setText('Saved successfully')
-        except:
-            print('error trying to save the configurations')
-            self.lbl_status.setText('An error occured when saving')
+        def final(self):
+            try:
+                #! todo find a way to show an error message if something goes wrong 
+                process = subprocess.Popen([f'pkexec sh -c \' cp -f  "{HOME}/.cache/grub_editor/temp.txt"  '+write_file +' && sudo update-grub 2>&1 \'  '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
+                # out = process.communicate()[0].decode()
+                # if self.lbl_details is not None:
+                #     print('setting')
+                #     print(out,'out')
+                #     self.lbl_details.setText(out)
+                # self.lbl_status.setText('Saved successfully')
+                while True:
+                    if self.lbl_details is not None:
+                        for line in process.stdout:
+                            sys.stdout.write(line.decode())
+                            last = self.lbl_details.text()
+                            self.lbl_details.setText(last+line.decode())
+                        break
+                self.lbl_status.setText('Saved successfully')
+                        
+            except Exception as e:
+                print(e)
+                print('error trying to save the configurations')
+                self.lbl_status.setText('An error occured when saving')
+                self.lbl_status.setStyleSheet('color: red')
+        threading.Thread(target=final,args=[self]).start()
 
         
         
@@ -159,7 +178,6 @@ class Ui(QtWidgets.QMainWindow):
         with open(file_loc) as file:
             data= file.read()
         date_time =str(dt.now()).replace(' ','_')[:-7]
-        print(date_time)
         subprocess.Popen([f'touch {HOME}/.grub_editor/snapshots/{date_time}'],shell=True)
         with open(f'{HOME}/.grub_editor/snapshots/{date_time}','w') as file:
             file.write(data)
@@ -167,15 +185,35 @@ class Ui(QtWidgets.QMainWindow):
     
 
 
+    def btn_show_details_callback(self):
+        btn=self.sender()
+        if btn.text()=='Show Details':
+            self.scrollArea = QtWidgets.QScrollArea(self.edit_configurations)
+            self.scrollArea.setWidgetResizable(True)
+            self.scrollArea.setObjectName("scrollArea")
+            self.scrollAreaWidgetContents = QtWidgets.QWidget()
+            self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 295, 108))
+            self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
+            self.gridLayout_3 = QtWidgets.QGridLayout(self.scrollAreaWidgetContents)
+            self.gridLayout_3.setObjectName("gridLayout_3")
+            self.lbl_details = QtWidgets.QLabel(self.scrollAreaWidgetContents)
+            self.lbl_details.setWordWrap(True)
+            self.lbl_details.setObjectName("lbl_details")
+            self.gridLayout_3.addWidget(self.lbl_details, 0, 0, 1, 1)
+            self.scrollArea.setWidget(self.scrollAreaWidgetContents)
+            self.verticalLayout.addWidget(self.scrollArea)
+            btn.setText('Hide Details')
+        elif btn.text()=='Hide Details':
+            pass
+            #! todo
+            
+    
     def btn_set_callback(self):
-        print('set button callback here')
         grub_timeout_value=self.ledit_grub_timeout.text()
         self.interrupt=None
         # sleep(5)
         if grub_timeout_value=='0':
-            print(grub_timeout_value=='0','grub_timeout_value==0 before what')
             self.ledit_grub_timeout.setText('Use 0.0 instead of 0 ')
-            print(grub_timeout_value=='0','grub_timeout_value==0 after  what')
             self.ledit_grub_timeout.selectAll()
             self.ledit_grub_timeout.setFocus()
         else:
@@ -191,11 +229,30 @@ class Ui(QtWidgets.QMainWindow):
         
         #! todo test if this works
         if not self.verticalLayout.itemAt(4) or not isinstance(self.verticalLayout.itemAt(4).widget(),QtWidgets.QFrame): 
+            
+            #create a label to show user that saving
             self.lbl_status= QtWidgets.QLabel(self.edit_configurations)
             self.lbl_status.setText('saving do not close')
-            self.verticalLayout.addWidget(self.lbl_status)
+            self.lbl_status.setStyleSheet('color:#03fc6f;')
+            
+            
+            
+            # self.verticalLayout.addWidget(self.lbl_status)
+            
+            # create a button (show details)
+            self.btn_show_details= QtWidgets.QPushButton(self.edit_configurations)
+            self.btn_show_details.setText('Show Details')
+            self.btn_show_details.clicked.connect(self.btn_show_details_callback)
+            
+            #create a horizontal layout
+            self.HLayout_save= QtWidgets.QHBoxLayout()
+            self.HLayout_save.addWidget(self.lbl_status)
+            self.HLayout_save.addWidget(self.btn_show_details)
+            self.verticalLayout.addLayout(self.HLayout_save)
+            
         else:
             self.lbl_status.setText('saving do not close')
+            self.lbl_status.setStyleSheet('color:#03fc6f;')
         
         print(self.interrupt,'interrupt')
         if not self.interrupt:
@@ -214,10 +271,8 @@ class Ui(QtWidgets.QMainWindow):
             
     def btn_view_callback(self,arg):
         global file_loc
-        print(arg)
         file_loc= f'{HOME}/.grub_editor/snapshots/'+arg
         self.setUiElements()
-        print(self.verticalLayout.itemAt(4).widget(),'de one')
         if self.verticalLayout.itemAt(4) is None or not 'QFrame' in str(self.verticalLayout.itemAt(4).widget()):
             #create frame
             self.frame = QtWidgets.QFrame(self.edit_configurations)
@@ -281,7 +336,7 @@ class Ui(QtWidgets.QMainWindow):
                 
     def set_btn_callback(self,line):
         print(f'pkexec sh -c  \' cp -f  "{HOME}/.grub_editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
-        subprocess.run([f'pkexec sh -c  \' cp -f  "{HOME}/.grub_editor/snapshots/{line}" {write_file}&& sudo update-grub  \' '],shell=True)
+        subprocess.Popen([f'pkexec sh -c  \' cp -f  "{HOME}/.grub_editor/snapshots/{line}" {write_file}&& sudo update-grub  \' '],shell=True)
         self.setUiElements()
             
     def deleteCallbackCreator(self,arg):
@@ -290,18 +345,10 @@ class Ui(QtWidgets.QMainWindow):
             print(string)
             subprocess.Popen([f'rm \'{HOME}/.grub_editor/snapshots/{arg}\''],shell=True)
             global file_loc
-            print(file_loc,'file_loc after delete')
-            print(f'{HOME}/.grub_editor/snapshots/{arg}','condition check string')
             if file_loc == f'{HOME}/.grub_editor/snapshots/{arg}':
                 file_loc='/etc/default/grub'
-                print(file_loc,'file_loc after delete and before set ui elems')
-                print(self.verticalLayout.itemAt(3),'before if')
-                print(self.verticalLayout.itemAt(3),'before if')
-                print(self.verticalLayout.itemAt(3),'before if')
                 if self.verticalLayout.itemAt(3):
-                    print(self.verticalLayout.itemAt(3))
                     self.verticalLayout.itemAt(3).widget().deleteLater()
-                    print(file_loc,'file_loc after delete and before set ui elems')
             self.setUiElements()
         return func
     def btn_rename_callback(self,number):
@@ -310,14 +357,11 @@ class Ui(QtWidgets.QMainWindow):
         if btn.text() == 'rename':
             self.ledit_ = QtWidgets.QLineEdit(self.conf_snapshots)
             self.ledit_.setObjectName(f"ledit_{number}")
-            print(self.HLayouts_list[number].itemAt(1).widget().text())
             self.ledit_.returnPressed.connect(self.HLayouts_list[number].itemAt(1).widget().click)
             self.rename_line_edits[number]=self.ledit_
             self.targetLabel=self.HLayouts_list[number].itemAt(0).widget()
             
             self.rename_labels[number] = self.targetLabel
-            print(number)
-            print(self.targetLabel)
             btn.parent().layout().replaceWidget(self.targetLabel,self.ledit_)
             self.targetLabel.deleteLater()
             self.ledit_.setText(self.lines[number])
@@ -336,7 +380,6 @@ class Ui(QtWidgets.QMainWindow):
             self.lbl_1.setObjectName(f"label{number}")
             self.lbl_1.setText(self.lines[number])
             
-            print(self.ledit_)
             # print(self.targetLabel.parent())
             btn.parent().layout().replaceWidget(self.ledit_,self.lbl_1)
             self.ledit_.deleteLater()
@@ -348,7 +391,6 @@ class Ui(QtWidgets.QMainWindow):
                
     def createSnapshotList(self):
         contents = subprocess.check_output([f'ls {HOME}/.grub_editor/snapshots/'],shell=True).decode()
-        print(contents)
         self.lines =contents.splitlines()
 
         self.HLayouts_list=[]
