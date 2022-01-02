@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from PyQt5 import QtCore ,QtWidgets, uic
+from PyQt5 import QtCore ,QtWidgets, uic,QtGui
 import sys
 from functools import partial
 import subprocess
@@ -132,9 +132,8 @@ class Ui(QtWidgets.QMainWindow):
     def __init__(self):
         super(Ui, self).__init__()
         self.threadpool= QtCore.QThreadPool()
-        uic.loadUi(f'{PATH}/main.ui',self)
+        uic.loadUi(f'{PATH}/main1.ui',self)
         self.show()
-        
         
         #dictionary to store qlineEdits for rename .stored widget is qlineEditWidget. key is index of the row
         self.rename_line_edits={}
@@ -142,7 +141,7 @@ class Ui(QtWidgets.QMainWindow):
         #dictionary for storing labels (rename) . key is index of the row
         self.btn_set.clicked.connect(self.btn_set_callback)
         self.rename_labels={}
-        
+        self.ledit_grub_timeout.setValidator(QtGui.QDoubleValidator())
         
         
         
@@ -175,20 +174,30 @@ class Ui(QtWidgets.QMainWindow):
         self.ledit_grub_timeout.setText(getValue('GRUB_TIMEOUT='))
         
         if getValue('GRUB_TIMEOUT_STYLE=')=='hidden':
-            self.comboBoxTimeoutStyle.setCurrentIndex(0)
+            self.checkBox_show_menu.setChecked(False)
         elif getValue('GRUB_TIMEOUT_STYLE=')=='menu':
-            self.comboBoxTimeoutStyle.setCurrentIndex(1)
+            self.checkBox_show_menu.setChecked(True)
         grub_default_val =getValue('GRUB_DEFAULT=')
         if grub_default_val[0]=='"':
             grub_default_val= grub_default_val[1:]
         if grub_default_val[-1]=='"':
             grub_default_val=grub_default_val[:-1]
             
-        if grub_default_val=='saved':
-            self.comboBox_grub_default.setCurrentIndex(0)
-        else:
+        
             
-            self.comboBox_grub_default.setCurrentIndex(self.all_entries.index(grub_default_val)+1)
+        if grub_default_val=='saved':
+            self.previously_booted_entry.setChecked(True)
+            # self.comboBox_grub_default.setCurrentIndex(0)
+        else:
+            self.predefined.setChecked(True)
+            # self.comboBox_grub_default.setCurrentIndex(self.all_entries.index(grub_default_val))
+            
+            
+        if getValue('GRUB_TIMEOUT=')=='-1':
+            self.checkBox_boot_default_entry_after.setChecked(False)
+        else:
+            self.checkBox_boot_default_entry_after.setChecked(True)
+            
         self.createSnapshotList()
         
         
@@ -208,8 +217,11 @@ class Ui(QtWidgets.QMainWindow):
         # reset the string
         self.lbl_details_text=''
         
-        setValue('GRUB_TIMEOUT=',self.ledit_grub_timeout.text())
-        setValue('GRUB_TIMEOUT_STYLE=',['hidden', 'menu'][self.comboBoxTimeoutStyle.currentIndex()])
+        
+        if self.checkBox_show_menu.isChecked():
+            setValue('GRUB_TIMEOUT_STYLE=','menu')
+        else:
+            setValue('GRUB_TIMEOUT_STYLE=','hidden')
         
         self.grub_default =str(self.comboBox_grub_default.currentText())
         if self.grub_default.count('>') <=1:
@@ -226,7 +238,11 @@ class Ui(QtWidgets.QMainWindow):
         else:
             print('Error occured when setting grub default as combobox text has more than one  1\' >\'  ')
             print(self.grub_default)
-        
+            
+        if self.checkBox_boot_default_entry_after.isChecked():
+            setValue('GRUB_TIMEOUT=',self.ledit_grub_timeout.text())
+        else:
+            setValue('GRUB_TIMEOUT=','-1')
         def final(self):
             try:
                 
@@ -246,11 +262,14 @@ class Ui(QtWidgets.QMainWindow):
                 # self.lbl_status.setText('Saved successfully')
                 while True:
                     authentication_complete=False
+                    authentication_error=False
                     for line in process.stdout:
                         if not authentication_complete:
                             self.lbl_status.setText('Saving configurations')
                             authentication_complete=True
                         sys.stdout.write(line.decode())
+                        if 'Error executing command as another user: Not authorized' in line.decode():
+                            authentication_error=True
                         self.lbl_details_text= self.lbl_details_text+ line.decode()
                         
                         #this handles the case where lbldetails hasnt yet been created
@@ -275,7 +294,11 @@ class Ui(QtWidgets.QMainWindow):
                                 print('looks like label was deleted')
                             
                         break
-                self.lbl_status.setText('Saved successfully')
+                if not authentication_error:
+                    self.lbl_status.setText('Saved successfully')
+                else:
+                    self.lbl_status.setText('Authentication error occured')
+                    self.lbl_status.setStyleSheet('color: red')
                         
             except Exception as e:
                 print(e)
@@ -346,25 +369,25 @@ class Ui(QtWidgets.QMainWindow):
     
     def btn_set_callback(self):
         grub_timeout_value=self.ledit_grub_timeout.text()
-        self.interrupt=None
+        interrupt=None
         # sleep(5)
         if grub_timeout_value=='0':
             self.ledit_grub_timeout.setText('Use 0.0 instead of 0 ')
             self.ledit_grub_timeout.selectAll()
             self.ledit_grub_timeout.setFocus()
+            #! todo here
         else:
             try:
                 float(grub_timeout_value)
                 
             except Exception as e:
-                self.interrupt=1
+                interrupt=1
                 print(e)
                 self.ledit_grub_timeout.setText('not a number error')
                 self.ledit_grub_timeout.selectAll()
                 self.ledit_grub_timeout.setFocus()
         
         #! todo test if this works
-        #if not self.verticalLayout.itemAt(4) or not isinstance(self.verticalLayout.itemAt(4).widget(),QtWidgets.QFrame): 
         if not (self.verticalLayout_2.itemAt(1) and isinstance(self.verticalLayout_2.itemAt(1),QtWidgets.QHBoxLayout)):
             if self.verticalLayout_2.itemAt(2) is not None:
                 print('yes',isinstance(self.verticalLayout_2.itemAt(2).widget(),QtWidgets.QHBoxLayout))
@@ -393,8 +416,8 @@ class Ui(QtWidgets.QMainWindow):
             self.lbl_status.setText('saving do not close')
             self.lbl_status.setStyleSheet('color:#03fc6f;')
         
-        print(self.interrupt,'interrupt')
-        if not self.interrupt:
+        print(interrupt,'interrupt')
+        if not interrupt:
             self.saveConfs()
             
 
