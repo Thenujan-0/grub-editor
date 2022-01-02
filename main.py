@@ -9,6 +9,7 @@ from time import sleep
 import os
 from subprocess import PIPE, Popen
 from time import perf_counter
+import traceback
 file_loc='/etc/default/grub'
 
 
@@ -63,11 +64,74 @@ def clearLayout(layout):
                 child.widget().deleteLater()
             elif child.layout() is not None:
                 clearLayout(child.layout())
-                
+
+class WorkerSignals(QtCore.QObject):
+    '''
+    Defines the signals available from a running worker thread.
+
+    Supported signals are:
+
+    finished
+        No data
+
+    error
+        tuple (exctype, value, traceback.format_exc() )
+
+    result
+        object data returned from processing, anything
+
+    '''
+    finished = QtCore.pyqtSignal()
+    error = QtCore.pyqtSignal(tuple)
+    result = QtCore.pyqtSignal(object)
+
+   
+class Worker(QtCore.QRunnable):
+    '''
+    Worker thread
+
+    Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
+
+    :param callback: The function callback to run on this worker thread. Supplied args and
+                     kwargs will be passed through to the runner.
+    :type callback: function
+    :param args: Arguments to pass to the callback function
+    :param kwargs: Keywords to pass to the callback function
+
+    '''
+
+    def __init__(self, fn, *args, **kwargs):
+        super(Worker, self).__init__()
+        # Store constructor arguments (re-used for processing)
+        self.fn = fn
+        self.args = args
+        self.kwargs = kwargs
+        self.signals = WorkerSignals()
+
+    @QtCore.pyqtSlot()
+    def run(self):
+        '''
+        Initialise the runner function with passed args, kwargs.
+        '''
+
+        # Retrieve args/kwargs here; and fire processing using them
+        try:
+            result = self.fn(
+                *self.args, **self.kwargs
+            )
+        except:
+            traceback.print_exc()
+            exctype, value = sys.exc_info()[:2]
+            self.signals.error.emit((exctype, value, traceback.format_exc()))
+        else:
+            self.signals.result.emit(result)  # Return the result of the processing
+        finally:
+            self.signals.finished.emit()  # Done
+                    
 class Ui(QtWidgets.QMainWindow):
     def __init__(self):
         super(Ui, self).__init__()
-        
+        self.threadpool= QtCore.QThreadPool()
         uic.loadUi(f'{PATH}/main.ui',self)
         self.show()
         
@@ -106,7 +170,7 @@ class Ui(QtWidgets.QMainWindow):
         
         
         
-    def setUiElements(self):
+    def setUiElements(self,no_snapshot=False):
         """reloads the ui elements that should be reloaded"""
         self.ledit_grub_timeout.setText(getValue('GRUB_TIMEOUT='))
         
@@ -125,8 +189,6 @@ class Ui(QtWidgets.QMainWindow):
         else:
             
             self.comboBox_grub_default.setCurrentIndex(self.all_entries.index(grub_default_val)+1)
-            
-            
         self.createSnapshotList()
         
         
@@ -415,7 +477,8 @@ class Ui(QtWidgets.QMainWindow):
         start = perf_counter()
         print(f'pkexec sh -c  \' cp -f  "{HOME}/.grub_editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
         #! todo here
-        subprocess.Popen([f'pkexec sh -c  \' cp -f  "{HOME}/.grub_editor/snapshots/{line}" {write_file}&& sudo update-grub  \' '],shell=True)
+
+        
         self.setUiElements()
         end=perf_counter()
         
@@ -443,6 +506,66 @@ class Ui(QtWidgets.QMainWindow):
         else:
             self.lbl_status.setText('waiting for authentication')
             
+        self.startWorker(line)
+    def startWorker(self,line):
+        worker = Worker(self.final,line)
+        worker.signals.finished.connect(self.setUiElements)
+        self.threadpool.start(worker)
+        
+    def final(self,line):
+        try:
+            
+            #! todo find a way to show an error message if something goes wrong 
+            process = subprocess.Popen([f'pkexec sh -c  \' cp -f  "{HOME}/.grub_editor/snapshots/{line}" {write_file}&& sudo update-grub  \' '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
+            self.lbl_details_text='Waiting for authentication \n'
+            
+            self.set_lbl_details()
+            
+            self.lbl_status.setText('Waiting for authentication')
+            # out = process.communicate()[0].decode()
+            # if self.lbl_details is not None:
+            #     print('setting')
+            #     print(out,'out')
+            #     self.lbl_details.setText(out)
+            # self.lbl_status.setText('Saved successfully')
+            while True:
+                print('running')
+                authentication_complete=False
+                for line in process.stdout:
+                    if not authentication_complete:
+                        self.lbl_status.setText('Saving configurations')
+                        authentication_complete=True
+                    sys.stdout.write(line.decode())
+                    self.lbl_details_text= self.lbl_details_text+ line.decode()
+                    
+                    #this handles the case where lbldetails hasnt yet been created
+                    if self.lbl_details is not None:
+                        
+                        #this handles the case where lbl_details_text gets deleted after once its been created
+                        try:
+                            self.lbl_details.setText(self.lbl_details_text)
+                        except:
+                            pass
+                break
+
+                if self.lbl_details is not None:
+                    for line in process.stdout:
+                        sys.stdout.write(line.decode())
+                        try:
+                            last = self.lbl_details.text()
+                            print('last is ',last)
+                            self.lbl_details.setText(last+line.decode())
+                        except:
+                            #! todo 
+                            print('looks like label was deleted')
+                        
+                    break
+            self.lbl_status.setText('Saved successfully')
+        except Exception as e:
+            print(e)
+            print('error trying to save the configurations')
+            self.lbl_status.setText('An error occured when saving')
+            self.lbl_status.setStyleSheet('color: red')
     def deleteCallbackCreator(self,arg):
         def func():
             string =f'rm {HOME}/.grub_editor/snapshots/{arg}'
@@ -493,6 +616,7 @@ class Ui(QtWidgets.QMainWindow):
         
                
     def createSnapshotList(self):
+        print('start of errors?')
         contents = subprocess.check_output([f'ls {HOME}/.grub_editor/snapshots/'],shell=True).decode()
         self.lines =contents.splitlines()
 
