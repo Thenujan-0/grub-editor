@@ -322,7 +322,20 @@ class Ui(QtWidgets.QMainWindow):
 
 
     def btn_show_details_callback(self,tab):
+        #! todo make sure the the scroll area is created below this button
         print(self.verticalLayout_2.itemAt(1))
+        target_index=None
+        for i in range(self.verticalLayout_2.count()):
+            if isinstance(self.verticalLayout_2.itemAt(i),QtWidgets.QHBoxLayout):
+                print(self.verticalLayout_2.itemAt(i).itemAt(0).widget())
+                target = self.findChild(QtWidgets.QHBoxLayout,'HLayout_save')
+                print(target)
+                print('yes')
+                if target==self.verticalLayout_2.itemAt(i):
+                    print('found target',i)
+                    target_index=i
+                    break
+            print(i)
         btn=self.sender()
         if btn.text()=='Show Details':
             
@@ -350,7 +363,7 @@ class Ui(QtWidgets.QMainWindow):
             self.scrollArea.setWidget(self.scrollAreaWidgetContents)
             #if tab=='edit_configurations':
              #   print('yes')
-            self.verticalLayout_2.addWidget(self.scrollArea)
+            self.verticalLayout_2.insertWidget(target_index+1,self.scrollArea)
             #elif tab=='conf_snapshots':
                 # self.VLayout_snapshot.addWidget(self.scrollArea)
                 
@@ -387,10 +400,11 @@ class Ui(QtWidgets.QMainWindow):
                 self.ledit_grub_timeout.selectAll()
                 self.ledit_grub_timeout.setFocus()
         
-        #! todo test if this works
+        
         if not (self.verticalLayout_2.itemAt(1) and isinstance(self.verticalLayout_2.itemAt(1),QtWidgets.QHBoxLayout)):
             if self.verticalLayout_2.itemAt(2) is not None:
                 print('yes',isinstance(self.verticalLayout_2.itemAt(2).widget(),QtWidgets.QHBoxLayout))
+                
             print(self.verticalLayout_2.itemAt(1))
             #create a label to show user that saving
             self.lbl_status= QtWidgets.QLabel()
@@ -408,6 +422,7 @@ class Ui(QtWidgets.QMainWindow):
             
             #create a horizontal layout
             self.HLayout_save= QtWidgets.QHBoxLayout()
+            self.HLayout_save.setObjectName('HLayout_save')
             self.HLayout_save.addWidget(self.lbl_status)
             self.HLayout_save.addWidget(self.btn_show_details)
             self.verticalLayout_2.addLayout(self.HLayout_save)
@@ -424,18 +439,19 @@ class Ui(QtWidgets.QMainWindow):
     def btn_show_orginal_callback(self):
         global file_loc
         file_loc='/etc/default/grub'
+        print(self.sender().parent().deleteLater())
         self.setUiElements()
-        if 'QFrame' in str(self.verticalLayout.itemAt(4).widget()):
-            self.verticalLayout.itemAt(4).widget().deleteLater()
-        else:
-            self.verticalLayout.itemAt(5).widget().deleteLater()
+        # if 'QFrame' in str(self.verticalLayout_2.itemAt(1).widget()):
+        #     self.verticalLayout_2.itemAt(1).widget().deleteLater()
+        # elif 'QFrame' in str(self.verticalLayout_2.itemAt(1).widget()):
+        #     self.verticalLayout_2.itemAt(2).widget().deleteLater()
             
             
     def btn_view_callback(self,arg):
         global file_loc
         file_loc= f'{HOME}/.grub_editor/snapshots/'+arg
         self.setUiElements()
-        if self.verticalLayout.itemAt(4) is None or not 'QFrame' in str(self.verticalLayout.itemAt(4).widget()):
+        if not self.findChild(QtWidgets.QFrame,'frame'):
             #create frame
             self.frame = QtWidgets.QFrame(self.edit_configurations)
             self.frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
@@ -452,6 +468,9 @@ class Ui(QtWidgets.QMainWindow):
             self.lbl_snapshot_view.setWordWrap(True)
             self.lbl_snapshot_view.setMinimumSize(100,30)
             self.HLayout_=QtWidgets.QHBoxLayout()
+            print('executed')
+            self.HLayout_.setObjectName('HLayout_')
+            self.HLayout_.setContentsMargins(500,50,-1,-1)
             
             
             # the '.' in the string is there to avoid QLabel getting affected
@@ -462,7 +481,7 @@ class Ui(QtWidgets.QMainWindow):
             
             
             
-            self.HLayout_.setObjectName('HLayout_')
+            
             # self.HLayout_.addWidget(self.lbl_snapshot_view)
             
             #button to reverto to original
@@ -478,7 +497,11 @@ class Ui(QtWidgets.QMainWindow):
             self.gridLayout_3.setObjectName("gridLayout_3")
             self.gridLayout_3.addWidget(self.lbl_snapshot_view, 0, 0, 1, 1)
             self.gridLayout_3.addWidget(self.btn_show_orginal, 0, 1, 1, 1)
-            self.verticalLayout.addWidget(self.frame)
+            # self.verticalLayout_2.addWidget(self.frame)
+            self.verticalLayout.insertWidget(0, self.frame)
+            
+            
+            
             
             
             
@@ -505,7 +528,8 @@ class Ui(QtWidgets.QMainWindow):
         self.setUiElements()
         end=perf_counter()
         
-        if not (self.verticalLayout_2.itemAt(1) and isinstance(self.verticalLayout_2.itemAt(1),QtWidgets.QHBoxLayout)):
+        if not (self.verticalLayout_2.itemAt(1) and isinstance(self.verticalLayout_2.itemAt(1),QtWidgets.QHBoxLayout)) and \
+            not (self.verticalLayout_2.itemAt(2) and isinstance(self.verticalLayout_2.itemAt(2),QtWidgets.QHBoxLayout)):
             #create a label to show user that saving
             self.lbl_status= QtWidgets.QLabel(self.edit_configurations)
             self.lbl_status.setText('waiting for authentication')
