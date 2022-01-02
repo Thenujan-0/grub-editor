@@ -8,6 +8,7 @@ from datetime import datetime as dt
 from time import sleep
 import os
 from subprocess import PIPE, Popen
+from time import perf_counter
 file_loc='/etc/default/grub'
 
 
@@ -97,8 +98,11 @@ class Ui(QtWidgets.QMainWindow):
         print(self.all_entries)
         self.setUiElements()
         
-        
+        #label that shows saving or saved sucessfully
         self.lbl_details=None
+        
+        #variable to store the execution output  when saving
+        self.lbl_details_text=''
         
         
         
@@ -125,10 +129,26 @@ class Ui(QtWidgets.QMainWindow):
             
         self.createSnapshotList()
         
+        
+    def set_lbl_details(self):
+        """receives the string in lbl_details_text and sets it as the label for lbl_details"""
+        try:
+            self.lbl_details.setText(self.lbl_details_text)
+        except:
+            #this could fail because of two reasons 
+            #1.lbl_details hasnt yet been created
+            #2.it was deleted
+            pass
+        
+        
     def saveConfs(self):
+        
+        # reset the string
+        self.lbl_details_text=''
         
         setValue('GRUB_TIMEOUT=',self.ledit_grub_timeout.text())
         setValue('GRUB_TIMEOUT_STYLE=',['hidden', 'menu'][self.comboBoxTimeoutStyle.currentIndex()])
+        
         self.grub_default =str(self.comboBox_grub_default.currentText())
         if self.grub_default.count('>') <=1:
             pass
@@ -147,8 +167,15 @@ class Ui(QtWidgets.QMainWindow):
         
         def final(self):
             try:
+                
+                
                 #! todo find a way to show an error message if something goes wrong 
-                process = subprocess.Popen([f'pkexec sh -c \' cp -f  "{HOME}/.cache/grub_editor/temp.txt"  '+write_file +' && sudo update-grub 2>&1 \'  '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
+                process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && cp -f  "{HOME}/.cache/grub_editor/temp.txt"  '+write_file +' && sudo update-grub 2>&1 \'  '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
+                self.lbl_details_text='Waiting for authentication \n'
+                
+                self.set_lbl_details()
+                
+                self.lbl_status.setText('Waiting for authentication')
                 # out = process.communicate()[0].decode()
                 # if self.lbl_details is not None:
                 #     print('setting')
@@ -156,11 +183,35 @@ class Ui(QtWidgets.QMainWindow):
                 #     self.lbl_details.setText(out)
                 # self.lbl_status.setText('Saved successfully')
                 while True:
+                    authentication_complete=False
+                    for line in process.stdout:
+                        if not authentication_complete:
+                            self.lbl_status.setText('Saving configurations')
+                            authentication_complete=True
+                        sys.stdout.write(line.decode())
+                        self.lbl_details_text= self.lbl_details_text+ line.decode()
+                        
+                        #this handles the case where lbldetails hasnt yet been created
+                        if self.lbl_details is not None:
+                            
+                            #this handles the case where lbl_details_text gets deleted after once its been created
+                            try:
+                                self.lbl_details.setText(self.lbl_details_text)
+                            except:
+                                pass
+                    break
+
                     if self.lbl_details is not None:
                         for line in process.stdout:
                             sys.stdout.write(line.decode())
-                            last = self.lbl_details.text()
-                            self.lbl_details.setText(last+line.decode())
+                            try:
+                                last = self.lbl_details.text()
+                                print('last is ',last)
+                                self.lbl_details.setText(last+line.decode())
+                            except:
+                                #! todo 
+                                print('looks like label was deleted')
+                            
                         break
                 self.lbl_status.setText('Saved successfully')
                         
@@ -185,10 +236,16 @@ class Ui(QtWidgets.QMainWindow):
     
 
 
-    def btn_show_details_callback(self):
+    def btn_show_details_callback(self,tab):
+        print(self.verticalLayout_2.itemAt(1))
         btn=self.sender()
         if btn.text()=='Show Details':
-            self.scrollArea = QtWidgets.QScrollArea(self.edit_configurations)
+            
+            #! todo
+       #     if tab=='edit_configurations':
+            self.scrollArea = QtWidgets.QScrollArea()
+       #     elif tab=='conf_snapshots':
+      #          self.scrollArea = QtWidgets.QScrollArea(self.conf_snapshots)
             self.scrollArea.setWidgetResizable(True)
             self.scrollArea.setObjectName("scrollArea")
             self.scrollAreaWidgetContents = QtWidgets.QWidget()
@@ -197,16 +254,33 @@ class Ui(QtWidgets.QMainWindow):
             self.gridLayout_3 = QtWidgets.QGridLayout(self.scrollAreaWidgetContents)
             self.gridLayout_3.setObjectName("gridLayout_3")
             self.lbl_details = QtWidgets.QLabel(self.scrollAreaWidgetContents)
+            
+            #! todo here
+            
             self.lbl_details.setWordWrap(True)
             self.lbl_details.setObjectName("lbl_details")
+            self.lbl_details.setText(self.lbl_details_text)
             self.gridLayout_3.addWidget(self.lbl_details, 0, 0, 1, 1)
+            # self.verticalLayout_2.addWidget(self.lbl_details)
             self.scrollArea.setWidget(self.scrollAreaWidgetContents)
-            self.verticalLayout.addWidget(self.scrollArea)
+            #if tab=='edit_configurations':
+             #   print('yes')
+            self.verticalLayout_2.addWidget(self.scrollArea)
+            #elif tab=='conf_snapshots':
+                # self.VLayout_snapshot.addWidget(self.scrollArea)
+                
             btn.setText('Hide Details')
+                
         elif btn.text()=='Hide Details':
-            pass
-            #! todo
             
+                
+            for i in range(self.verticalLayout_2.count()):
+                if 'QScrollArea' in str(self.verticalLayout_2.itemAt(i).widget()):
+                    self.verticalLayout_2.itemAt(i).widget().deleteLater()
+                    break
+
+                
+            btn.setText('Show Details')
     
     def btn_set_callback(self):
         grub_timeout_value=self.ledit_grub_timeout.text()
@@ -228,10 +302,13 @@ class Ui(QtWidgets.QMainWindow):
                 self.ledit_grub_timeout.setFocus()
         
         #! todo test if this works
-        if not self.verticalLayout.itemAt(4) or not isinstance(self.verticalLayout.itemAt(4).widget(),QtWidgets.QFrame): 
-            
+        #if not self.verticalLayout.itemAt(4) or not isinstance(self.verticalLayout.itemAt(4).widget(),QtWidgets.QFrame): 
+        if not (self.verticalLayout_2.itemAt(1) and isinstance(self.verticalLayout_2.itemAt(1),QtWidgets.QHBoxLayout)):
+            if self.verticalLayout_2.itemAt(2) is not None:
+                print('yes',isinstance(self.verticalLayout_2.itemAt(2).widget(),QtWidgets.QHBoxLayout))
+            print(self.verticalLayout_2.itemAt(1))
             #create a label to show user that saving
-            self.lbl_status= QtWidgets.QLabel(self.edit_configurations)
+            self.lbl_status= QtWidgets.QLabel()
             self.lbl_status.setText('saving do not close')
             self.lbl_status.setStyleSheet('color:#03fc6f;')
             
@@ -240,15 +317,15 @@ class Ui(QtWidgets.QMainWindow):
             # self.verticalLayout.addWidget(self.lbl_status)
             
             # create a button (show details)
-            self.btn_show_details= QtWidgets.QPushButton(self.edit_configurations)
+            self.btn_show_details= QtWidgets.QPushButton()
             self.btn_show_details.setText('Show Details')
-            self.btn_show_details.clicked.connect(self.btn_show_details_callback)
+            self.btn_show_details.clicked.connect(partial(self.btn_show_details_callback,'edit_configurations'))
             
             #create a horizontal layout
             self.HLayout_save= QtWidgets.QHBoxLayout()
             self.HLayout_save.addWidget(self.lbl_status)
             self.HLayout_save.addWidget(self.btn_show_details)
-            self.verticalLayout.addLayout(self.HLayout_save)
+            self.verticalLayout_2.addLayout(self.HLayout_save)
             
         else:
             self.lbl_status.setText('saving do not close')
@@ -335,9 +412,36 @@ class Ui(QtWidgets.QMainWindow):
             self.lbl_snapshot_view.setText('You are currently looking at snapshot from '+arg)
                 
     def set_btn_callback(self,line):
+        start = perf_counter()
         print(f'pkexec sh -c  \' cp -f  "{HOME}/.grub_editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
+        #! todo here
         subprocess.Popen([f'pkexec sh -c  \' cp -f  "{HOME}/.grub_editor/snapshots/{line}" {write_file}&& sudo update-grub  \' '],shell=True)
         self.setUiElements()
+        end=perf_counter()
+        
+        if not (self.verticalLayout_2.itemAt(1) and isinstance(self.verticalLayout_2.itemAt(1),QtWidgets.QHBoxLayout)):
+            #create a label to show user that saving
+            self.lbl_status= QtWidgets.QLabel(self.edit_configurations)
+            self.lbl_status.setText('waiting for authentication')
+            self.lbl_status.setStyleSheet('color:#03fc6f;')
+            
+            
+            
+            # self.verticalLayout.addWidget(self.lbl_status)
+            
+            # create a button (show details)
+            self.btn_show_details= QtWidgets.QPushButton(self.edit_configurations)
+            self.btn_show_details.setText('Show Details')
+            self.btn_show_details.clicked.connect(partial(self.btn_show_details_callback,'conf_snapshots'))
+            
+            #create a horizontal layout
+            self.HLayout_save= QtWidgets.QHBoxLayout()
+            self.HLayout_save.addWidget(self.lbl_status)
+            self.HLayout_save.addWidget(self.btn_show_details)
+            self.verticalLayout_2.addLayout(self.HLayout_save)
+        #print(end-start)
+        else:
+            self.lbl_status.setText('waiting for authentication')
             
     def deleteCallbackCreator(self,arg):
         def func():
@@ -353,7 +457,6 @@ class Ui(QtWidgets.QMainWindow):
         return func
     def btn_rename_callback(self,number):
         btn = self.sender()
-        print('btn_rename_callback was called',btn.text())
         if btn.text() == 'rename':
             self.ledit_ = QtWidgets.QLineEdit(self.conf_snapshots)
             self.ledit_.setObjectName(f"ledit_{number}")
