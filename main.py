@@ -29,6 +29,14 @@ def getValue(name):
         data =file.read()
         start_index =data.find(name)
         end_index =data[start_index+len(name):].find('\n')+start_index+len(name)
+        lines=data.splitlines()
+        for line in lines:
+            if name in line:
+                print(name,'name was found in the line',line)
+                if '#' in line :
+                    print('found a line that could possibly commented out',line)
+                    return 'None'
+
         if start_index <0:
             return "None"
         else:
@@ -48,6 +56,23 @@ def setValue(name,val):
     end_index =to_write_data[start_index+len(name):].find('\n')+start_index+len(name)
     
     to_write_data = to_write_data.replace(name+to_write_data[start_index+len(name):end_index],name+str(val))
+    lines = to_write_data.splitlines()
+    for line in lines:
+        if name in line:
+            print('found the name',name,'in the line',line)
+            if '#' in line :
+                print('lines seeems to be commented out',line)
+                index = lines.index(line)
+                new_line =line.replace('#','')
+                print('the commented out lines was replaced with ',new_line)
+                lines[index+1] = new_line
+    final_string=''
+    for line in lines:
+        final_string = final_string+line+'\n'
+        
+    print(final_string)
+        
+    to_write_data = final_string
     
     subprocess.Popen([f'mkdir -p {HOME}/.cache/grub_editor/'],shell=True)
     subprocess.Popen([f'touch {HOME}/.cache/grub_editor/grub.txt'],shell=True)
@@ -159,7 +184,7 @@ class Ui(QtWidgets.QMainWindow):
                     self.comboBox_grub_default.addItem(sub.parent.title+' >'+sub.title)
                     self.all_entries.append(sub.parent.title+' >'+sub.title)
         print(self.all_entries)
-        self.setUiElements()
+        
         
         #label that shows saving or saved sucessfully
         self.lbl_details=None
@@ -167,11 +192,50 @@ class Ui(QtWidgets.QMainWindow):
         #variable to store the execution output  when saving
         self.lbl_details_text=''
         
+       
+        
+        self.comboBox_configurations.currentIndexChanged.connect(self.load_configuration_from_callback)
         
         
+        
+        self.setUiElements()
+        
+        
+    def load_configuration_from_callback(self,value):
+        print(self.configurations[value])
+        # value =self.configurations[value]
+        # if value =='/etc/default/grub':
+        #     file_loc='/etc/default/grub'
+        # else:
+        #     file_loc=f'{HOME}/.grub_editor/snapshots/\'{value}\''
+            
+        # self.setUiElements()
+            
     def setUiElements(self,no_snapshot=False):
         """reloads the ui elements that should be reloaded"""
         self.ledit_grub_timeout.setText(getValue('GRUB_TIMEOUT='))
+        
+        
+        
+        #stores the available configurations
+        self.configurations=['/etc/default/grub']
+        
+        #add the available configurations to the combo box
+        contents = subprocess.check_output([f'ls {HOME}/.grub_editor/snapshots/'],shell=True).decode()
+        self.lines =contents.splitlines()
+        print(self.lines,'line')
+        
+        print('clearing combo box contents')
+        self.blockSignals(True)
+        self.comboBox_configurations.clear()
+        self.blockSignals(False)
+        print('cleared comboBox contents')
+        for line in self.lines:
+            self.configurations.append(line)
+            print(self.configurations)
+            
+        for item in self.configurations:
+            self.comboBox_configurations.addItem(item)
         
         if getValue('GRUB_TIMEOUT_STYLE=')=='hidden':
             self.checkBox_show_menu.setChecked(False)
@@ -317,8 +381,7 @@ class Ui(QtWidgets.QMainWindow):
         subprocess.Popen([f'touch {HOME}/.grub_editor/snapshots/{date_time}'],shell=True)
         with open(f'{HOME}/.grub_editor/snapshots/{date_time}','w') as file:
             file.write(data)
-        self.createSnapshotList()
-    
+        self.setUiElements()
 
 
     def btn_show_details_callback(self,tab):
@@ -663,7 +726,6 @@ class Ui(QtWidgets.QMainWindow):
         
                
     def createSnapshotList(self):
-        print('start of errors?')
         contents = subprocess.check_output([f'ls {HOME}/.grub_editor/snapshots/'],shell=True).decode()
         self.lines =contents.splitlines()
 
