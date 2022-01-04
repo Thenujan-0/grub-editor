@@ -27,21 +27,21 @@
       </widget>
      </item>
      <item>
-      <widget class="QCheckBox" name="checkBox">
+      <widget class="QCheckBox" name="checkBox_do_this_everytime">
        <property name="text">
         <string>Do this everytime</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton_2">
+      <widget class="QPushButton" name="btn_on_the_application_itself">
        <property name="text">
         <string>On the appliction itself</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton">
+      <widget class="QPushButton" name="btn_default_text_editor">
        <property name="text">
         <string>Default text editor</string>
        </property>

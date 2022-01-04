@@ -10,6 +10,9 @@ import os
 from subprocess import PIPE, Popen
 from time import perf_counter
 import traceback
+import json
+
+
 file_loc='/etc/default/grub'
 
 
@@ -84,6 +87,54 @@ def setValue(name,val):
     subprocess.Popen([f'touch {HOME}/.cache/grub_editor/grub.txt'],shell=True)
     with open(f'{HOME}/.cache/grub_editor/temp.txt','w') as file:
         file.write(to_write_data)
+        
+        
+default_preference="""{
+      "view_default": "None"
+}"""
+
+def get_preference(key):
+    subprocess.run([f'mkdir -p {HOME}/.grub_editor/preferences/'],shell=True)
+    
+    if os.path.exists(f'{HOME}/.grub_editor/preferences/main.json'):
+        file = open(f'{HOME}/.grub_editor/preferences/main.json')
+        try:
+            dict =json.load(file)
+        except Exception as e:
+            file.close()
+            print(e)
+            print(traceback.format_exc())
+            print('This exception was handled with ease 😎')
+            with open(f'{HOME}/.grub_editor/preferences/main.json','w') as file:
+                file.write(default_preference)
+                
+                
+        #reopen the file and then read it
+        file = open(f'{HOME}/.grub_editor/preferences/main.json')
+        dict =json.load(file)
+        file.close()
+        value = dict[key]
+        
+    return value
+
+def set_preference(key,value):
+    subprocess.run([f'mkdir -p {HOME}/.grub_editor/preferences/'],shell=True)
+    
+    if os.path.exists(f'{HOME}/.grub_editor/preferences/main.json'):
+        file = open(f'{HOME}/.grub_editor/preferences/main.json')
+        dict =json.load(file)
+        print(dict)
+        print(type(dict))
+        dict[key]=value
+        file.close()
+    
+    pref_file = open(f'{HOME}/.grub_editor/preferences/main.json', "w")
+    
+    json.dump(dict, pref_file, indent = 6)
+    
+    pref_file.close()
+
+
 
 
 
@@ -570,7 +621,19 @@ class Ui(QtWidgets.QMainWindow):
         global file_loc
         file_loc= f'{HOME}/.grub_editor/snapshots/'+arg
         self.setUiElements()
-        self.tabWidget.setCurrentIndex(0)
+        view_default=get_preference('view_default')
+        self.view_btn_win =ViewButtonUi(file_loc)
+        if view_default=='None':
+            
+            self.view_btn_win.show()
+        elif view_default=='on_the_application_itself':
+            
+            self.view_btn_win.btn_on_the_application_itself_callback()
+            
+        elif view_default=='default_text_editor':
+            self.view_btn_win.btn_default_text_editor_callback()
+        else:
+            print('ERROR: unknown value for view_default on main.json',view_default)
         # if not self.findChild(QtWidgets.QFrame,'frame'):
         #     #create frame
         #     self.frame = QtWidgets.QFrame(self.edit_configurations)
@@ -732,12 +795,19 @@ class Ui(QtWidgets.QMainWindow):
                             print('looks like label was deleted')
                         
                     break
-            self.lbl_status.setText('Saved successfully')
+            if 'done' in self.lbl_details_text:
+                self.lbl_status.setText('Saved successfully')
+            else:
+                self.lbl_status.setText('Saving Failed')
+                self.lbl_status.setStyleSheet('color:red')
         except Exception as e:
             print(e)
             print('error trying to save the configurations')
             self.lbl_status.setText('An error occured when saving')
             self.lbl_status.setStyleSheet('color: red')
+            
+            
+            
     def deleteCallbackCreator(self,arg):
         def func():
             string =f'rm {HOME}/.grub_editor/snapshots/{arg}'
@@ -849,7 +919,28 @@ class IssuesUi(QtWidgets.QMainWindow):
             print(issue)
             self.listWidget.addItem(issue)
         
+class ViewButtonUi(QtWidgets.QDialog):
+    def __init__(self,file_location):
+        self.file_location = file_location
+        super(ViewButtonUi, self).__init__()
+        uic.loadUi('view_snapshot.ui',self)
+        self.btn_on_the_application_itself.clicked.connect(self.btn_on_the_application_itself_callback)
+        self.btn_default_text_editor.clicked.connect(self.btn_default_text_editor_callback)
 
+    def safe_close(self,arg):
+        if self.checkBox_do_this_everytime.isChecked():
+            set_preference('view_default',arg)
+        self.close()
+        
+    def btn_default_text_editor_callback(self):
+        self.safe_close('default_text_editor')
+        subprocess.Popen([f'xdg-open \'{self.file_location}\''],shell=True)
+        
+    def btn_on_the_application_itself_callback(self):
+        window.tabWidget.setCurrentIndex(0)
+        self.safe_close('on_the_application_itself')
+        
+        
 app =QtWidgets.QApplication(sys.argv)
 window=Ui()
 app.exec_()
