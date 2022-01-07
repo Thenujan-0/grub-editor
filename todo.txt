@@ -1,2 +1,3 @@
-add and substract button functionality
-conf_snapshots tab view button call dialog
+1.show dialog on create snapshot button press
+2.check if the current grub.cfg is up to date with /etc/default/grub
+3.working inside chroot 

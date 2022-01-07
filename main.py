@@ -747,6 +747,8 @@ class Ui(QtWidgets.QMainWindow):
         worker.signals.finished.connect(self.setUiElements)
         self.threadpool.start(worker)
         
+        
+#! todo show modified in loaded configuration from comboBox
     def final(self,line):
         try:
             
