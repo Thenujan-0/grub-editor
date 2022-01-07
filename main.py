@@ -25,7 +25,7 @@ PATH = os.path.dirname(os.path.realpath(__file__))
 to_write_data=None
 
 
-subprocess.Popen([f'mkdir -p {HOME}/.grub_editor/snapshots'],shell=True)
+subprocess.Popen([f'mkdir -p {HOME}/.grub-editor/snapshots'],shell=True)
 
 def getValue(name,obj):
     with open(file_loc) as file:
@@ -83,9 +83,9 @@ def setValue(name,val):
         
     to_write_data = final_string
     
-    subprocess.Popen([f'mkdir -p {HOME}/.cache/grub_editor/'],shell=True)
-    subprocess.Popen([f'touch {HOME}/.cache/grub_editor/grub.txt'],shell=True)
-    with open(f'{HOME}/.cache/grub_editor/temp.txt','w') as file:
+    subprocess.Popen([f'mkdir -p {HOME}/.cache/grub-editor/'],shell=True)
+    subprocess.Popen([f'touch {HOME}/.cache/grub-editor/grub.txt'],shell=True)
+    with open(f'{HOME}/.cache/grub-editor/temp.txt','w') as file:
         file.write(to_write_data)
         
         
@@ -94,10 +94,10 @@ default_preference="""{
 }"""
 
 def get_preference(key):
-    subprocess.run([f'mkdir -p {HOME}/.grub_editor/preferences/'],shell=True)
+    subprocess.run([f'mkdir -p {HOME}/.grub-editor/preferences/'],shell=True)
     
-    if os.path.exists(f'{HOME}/.grub_editor/preferences/main.json'):
-        file = open(f'{HOME}/.grub_editor/preferences/main.json')
+    if os.path.exists(f'{HOME}/.grub-editor/preferences/main.json'):
+        file = open(f'{HOME}/.grub-editor/preferences/main.json')
         try:
             dict =json.load(file)
         except Exception as e:
@@ -105,12 +105,12 @@ def get_preference(key):
             print(e)
             print(traceback.format_exc())
             print('This exception was handled with ease 😎')
-            with open(f'{HOME}/.grub_editor/preferences/main.json','w') as file:
+            with open(f'{HOME}/.grub-editor/preferences/main.json','w') as file:
                 file.write(default_preference)
                 
                 
         #reopen the file and then read it
-        file = open(f'{HOME}/.grub_editor/preferences/main.json')
+        file = open(f'{HOME}/.grub-editor/preferences/main.json')
         dict =json.load(file)
         file.close()
         value = dict[key]
@@ -118,17 +118,17 @@ def get_preference(key):
     return value
 
 def set_preference(key,value):
-    subprocess.run([f'mkdir -p {HOME}/.grub_editor/preferences/'],shell=True)
+    subprocess.run([f'mkdir -p {HOME}/.grub-editor/preferences/'],shell=True)
     
-    if os.path.exists(f'{HOME}/.grub_editor/preferences/main.json'):
-        file = open(f'{HOME}/.grub_editor/preferences/main.json')
+    if os.path.exists(f'{HOME}/.grub-editor/preferences/main.json'):
+        file = open(f'{HOME}/.grub-editor/preferences/main.json')
         dict =json.load(file)
         print(dict)
         print(type(dict))
         dict[key]=value
         file.close()
     
-    pref_file = open(f'{HOME}/.grub_editor/preferences/main.json', "w")
+    pref_file = open(f'{HOME}/.grub-editor/preferences/main.json', "w")
     
     json.dump(dict, pref_file, indent = 6)
     
@@ -270,7 +270,7 @@ class Ui(QtWidgets.QMainWindow):
         if value =='/etc/default/grub':
             file_loc='/etc/default/grub'
         else:
-            file_loc=f'{HOME}/.grub_editor/snapshots/{value}'
+            file_loc=f'{HOME}/.grub-editor/snapshots/{value}'
             
         self.setUiElements()
             
@@ -308,7 +308,7 @@ class Ui(QtWidgets.QMainWindow):
         self.configurations=['/etc/default/grub']
         
         #add the available configurations to the combo box
-        contents = subprocess.check_output([f'ls {HOME}/.grub_editor/snapshots/'],shell=True).decode()
+        contents = subprocess.check_output([f'ls {HOME}/.grub-editor/snapshots/'],shell=True).decode()
         self.lines =contents.splitlines()
         # print(self.lines,'line')
         
@@ -417,7 +417,7 @@ class Ui(QtWidgets.QMainWindow):
                 
                 
                 #! todo find a way to show an error message if something goes wrong 
-                process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && cp -f  "{HOME}/.cache/grub_editor/temp.txt"  '+write_file +' && sudo update-grub 2>&1 \'  '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
+                process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && cp -f  "{HOME}/.cache/grub-editor/temp.txt"  '+write_file +' && sudo update-grub 2>&1 \'  '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
                 self.lbl_details_text='Waiting for authentication \n'
                 
                 self.set_lbl_details()
@@ -483,8 +483,8 @@ class Ui(QtWidgets.QMainWindow):
         with open(file_loc) as file:
             data= file.read()
         date_time =str(dt.now()).replace(' ','_')[:-7]
-        subprocess.Popen([f'touch {HOME}/.grub_editor/snapshots/{date_time}'],shell=True)
-        with open(f'{HOME}/.grub_editor/snapshots/{date_time}','w') as file:
+        subprocess.Popen([f'touch {HOME}/.grub-editor/snapshots/{date_time}'],shell=True)
+        with open(f'{HOME}/.grub-editor/snapshots/{date_time}','w') as file:
             file.write(data)
         self.setUiElements()
 
@@ -619,7 +619,7 @@ class Ui(QtWidgets.QMainWindow):
             
     def btn_view_callback(self,arg):
         global file_loc
-        file_loc= f'{HOME}/.grub_editor/snapshots/'+arg
+        file_loc= f'{HOME}/.grub-editor/snapshots/'+arg
         self.setUiElements()
         view_default=get_preference('view_default')
         self.view_btn_win =ViewButtonUi(file_loc)
@@ -708,7 +708,7 @@ class Ui(QtWidgets.QMainWindow):
                 
     def set_btn_callback(self,line):
         start = perf_counter()
-        print(f'pkexec sh -c  \' cp -f  "{HOME}/.grub_editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
+        print(f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
         #! todo here
 
         
@@ -753,7 +753,7 @@ class Ui(QtWidgets.QMainWindow):
         try:
             
             #! todo find a way to show an error message if something goes wrong 
-            process = subprocess.Popen([f'pkexec sh -c  \' cp -f  "{HOME}/.grub_editor/snapshots/{line}" {write_file}&& sudo update-grub  \' '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
+            process = subprocess.Popen([f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file}&& sudo update-grub  \' '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
             self.lbl_details_text='Waiting for authentication \n'
             
             self.set_lbl_details()
@@ -812,11 +812,11 @@ class Ui(QtWidgets.QMainWindow):
             
     def deleteCallbackCreator(self,arg):
         def func():
-            string =f'rm {HOME}/.grub_editor/snapshots/{arg}'
+            string =f'rm {HOME}/.grub-editor/snapshots/{arg}'
             print(string)
-            subprocess.Popen([f'rm \'{HOME}/.grub_editor/snapshots/{arg}\''],shell=True)
+            subprocess.Popen([f'rm \'{HOME}/.grub-editor/snapshots/{arg}\''],shell=True)
             global file_loc
-            if file_loc == f'{HOME}/.grub_editor/snapshots/{arg}':
+            if file_loc == f'{HOME}/.grub-editor/snapshots/{arg}':
                 file_loc='/etc/default/grub'
                 if self.verticalLayout.itemAt(3):
                     self.verticalLayout.itemAt(3).widget().deleteLater()
@@ -845,7 +845,7 @@ class Ui(QtWidgets.QMainWindow):
             self.ledit_ = self.rename_line_edits[number]
             text = self.ledit_.text()
             line=self.lines[number]
-            subprocess.Popen([f'mv \'{HOME}/.grub_editor/snapshots/{line}\' \'{HOME}/.grub_editor/snapshots/{text}\' '],shell=True)
+            subprocess.Popen([f'mv \'{HOME}/.grub-editor/snapshots/{line}\' \'{HOME}/.grub-editor/snapshots/{text}\' '],shell=True)
             self.lbl_1 =QtWidgets.QLabel(self.conf_snapshots)
             self.lbl_1.setObjectName(f"label{number}")
             self.lbl_1.setText(self.lines[number])
@@ -860,7 +860,7 @@ class Ui(QtWidgets.QMainWindow):
         
                
     def createSnapshotList(self):
-        contents = subprocess.check_output([f'ls {HOME}/.grub_editor/snapshots/'],shell=True).decode()
+        contents = subprocess.check_output([f'ls {HOME}/.grub-editor/snapshots/'],shell=True).decode()
         self.lines =contents.splitlines()
 
         self.HLayouts_list=[]
