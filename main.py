@@ -84,7 +84,7 @@ def setValue(name,val):
     to_write_data = final_string
     
     subprocess.Popen([f'mkdir -p {HOME}/.cache/grub-editor/'],shell=True)
-    subprocess.Popen([f'touch {HOME}/.cache/grub-editor/grub.txt'],shell=True)
+    subprocess.Popen([f'touch {HOME}/.cache/grub-editor/temp.txt'],shell=True)
     with open(f'{HOME}/.cache/grub-editor/temp.txt','w') as file:
         file.write(to_write_data)
         
@@ -858,7 +858,37 @@ class Ui(QtWidgets.QMainWindow):
             
         
         
-               
+    def reconnect(self,signal ,new_handler=None,old_handler=None):
+        try:
+            if old_handler is not None:
+                while True:
+                    signal.disconnect(old_handler)
+            else:
+                signal.disconnect()
+        except TypeError:
+            pass
+        if new_handler is not None:
+            print(signal)
+            signal.connect(new_handler)
+            
+    def insertInto(self,layout,index,widget):
+        items=[]
+        for i in reversed(range(layout.count(),index)):
+            item =self.itemAt(i).widget()
+            item.setParent(None)
+            items.append(item)
+            print(item,'item')
+            
+        print('widget',widget)
+            
+        layout.addWidget(widget)
+        for i in reversed(range(len(items))):
+            layout.addWidget(items[i])
+
+            
+            
+
+            
     def createSnapshotList(self):
         contents = subprocess.check_output([f'ls {HOME}/.grub-editor/snapshots/'],shell=True).decode()
         self.lines =contents.splitlines()
@@ -866,11 +896,26 @@ class Ui(QtWidgets.QMainWindow):
         self.HLayouts_list=[]
         number =0
         clearLayout(self.VLayout_snapshot)
-        self.btn_create_snapshot = QtWidgets.QPushButton(self.conf_snapshots)
-        self.btn_create_snapshot.setObjectName("btn_create_snapshot")
-        self.btn_create_snapshot.setText("create a snapshot now")
-        self.btn_create_snapshot.clicked.connect(self.createSnapshot)
-        self.VLayout_snapshot.addWidget(self.btn_create_snapshot)
+
+        self.reconnect(self.btn_create_snapshot.clicked,self.createSnapshot)
+        # self.VLayout_snapshot.addWidget(self.btn_create_snapshot)
+        print(len(self.lines))
+        if len(self.lines) >0 and  self.lbl_no_snapshots:
+            self.lbl_no_snapshots.deleteLater()
+            self.lbl_no_snapshots= None
+            
+        elif len(self.lines) ==0 and not self.lbl_no_snapshots:
+            print('lines are zero and label wasnt found soo.. creating that lbl_nosnapshots')
+            self.lbl_no_snapshots = QtWidgets.QLabel(self.conf_snapshots)
+            self.lbl_no_snapshots.setWordWrap(True)
+            self.lbl_no_snapshots.setObjectName("lbl_no_snapshots")
+            self.lbl_no_snapshots.setText('Looks like you dont have any snapshots .Snapshots are backups of /etc/default/grub .Snapshots can help you when you mess up some configuration in /etc/default/grub . These snapshots are stored inside ~/.grub-editor/snapshots/')
+            self.lbl_no_snapshots.setWordWrap(True)
+            # self.gridLayout_2.addWidget(self.lbl_no_snapshots, 1, 0, 1, 1)
+            self.insertInto(self.gridLayout_2,1,self.lbl_no_snapshots)
+            print(self.gridLayout_2.itemAt(1))
+        else:
+            print('unexpected condition in line 895 when loking for lbl_no_snapshots')
         for line in self.lines:
             #first number is 0
             
