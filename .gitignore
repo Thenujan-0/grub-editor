@@ -1,3 +1,5 @@
+*
+temp*
 temp1.py
 temp2.py
 temp3.py
@@ -8,3 +10,6 @@ temp7.py
 test_json.py
 temp8.py
 PKGBUILD
+*.pyc
+__pycache__/
+.qt_for_python/
