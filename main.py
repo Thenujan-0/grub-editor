@@ -11,9 +11,10 @@ from subprocess import PIPE, Popen
 from time import perf_counter
 import traceback
 import json
-
-
+import random
+import math
 file_loc='/etc/default/grub'
+
 
 
 
@@ -25,9 +26,10 @@ PATH = os.path.dirname(os.path.realpath(__file__))
 to_write_data=None
 
 
-subprocess.Popen([f'mkdir -p {HOME}/.grub-editor/snapshots'],shell=True)
+
 
 def getValue(name,obj):
+    """pass the string to look for and object of QMainwindow"""
     with open(file_loc) as file:
         data =file.read()
         start_index =data.find(name)
@@ -55,6 +57,7 @@ def getValue(name,obj):
                 return data[start_index+len(name):end_index]
 
 
+subprocess.Popen([f'mkdir -p {HOME}/.grub-editor/snapshots'],shell=True)
 def setValue(name,val):
     global to_write_data
     if to_write_data is None:
@@ -211,12 +214,34 @@ class Worker(QtCore.QRunnable):
             self.signals.finished.emit()  # Done
                     
 class Ui(QtWidgets.QMainWindow):
+    resized = QtCore.pyqtSignal()
+    snapshot_lbl_len=18
+    snapshot_lbl_len_const=18
+    
+    
+    def resizeEvent(self, event):
+        # self.resized.emit()
+        return super(Ui, self).resizeEvent(event)
+
+    def someFunction(self):
+        # print("someFunction"+str(random.randint(0, 100)))
+        pass
+        # width =self.centralWidget().geometry().width()
+        # print(width,'width')
+        # if width >700:
+        #     self.snapshot_lbl_len = math.floor((width -700)/5)+self.snapshot_lbl_len_const
+        #     print (self.snapshot_lbl_len,' snapshot_lbl_len')
+        #     # self.createSnapshotList()
+        #     for layout in self.HLayouts_list:
+        #         print(layout.itemAt(0).widget())
+            
+            
     def __init__(self):
         super(Ui, self).__init__()
         self.threadpool= QtCore.QThreadPool()
         uic.loadUi(f'{PATH}/main1.ui',self)
         self.show()
-        
+        self.resized.connect(self.someFunction)
         #dictionary to store qlineEdits for rename .stored widget is qlineEditWidget. key is index of the row
         self.rename_line_edits={}
         
@@ -224,8 +249,8 @@ class Ui(QtWidgets.QMainWindow):
         self.btn_set.clicked.connect(self.btn_set_callback)
         self.rename_labels={}
         self.ledit_grub_timeout.setValidator(QtGui.QDoubleValidator())
-        
-        
+        self.scrollAreaWidgetContents.adjustSize()
+        self.VLayout_snapshot_parent.addStretch()
         
         #load the entries
         import find_entries
@@ -255,14 +280,65 @@ class Ui(QtWidgets.QMainWindow):
         
         self.setUiElements()
         
+        self.original_modifiers=[]
+        self.modified_original =False
+        
+        
         self.comboBox_configurations.currentIndexChanged.connect(self.load_configuration_from_callback)
         if len(self.issues) > 0:
             self.issuesUi=IssuesUi(self.issues)
             self.issuesUi.show()
         
-        
-        
-        
+        self.predefined.toggled.connect(self.radiobutton_toggle_callback)
+        self.comboBox_grub_default.currentIndexChanged.connect(self.comboBox_grub_default_callback)
+        self.checkBox_boot_default_entry_after.toggled.connect(self.checkBox_boot_default_entry_after_callback)
+        self.checkBox_show_menu.toggled.connect(self.checkBox_show_menu_callback)
+    def checkBox_boot_default_entry_after_callback(self):
+        """ on toggle handlerfor checkBox_boot_default_entry_after """
+        btn =self.sender()
+        timeout=getValue('GRUB_TIMEOUT=',self)
+        if  timeout !='None' :
+            print(timeout)
+            if self.checkBox_boot_default_entry_after.isChecked():
+                if btn  in self.original_modifiers:
+                    self.original_modifiers.remove(btn)
+                self.ledit_grub_timeout.setText(timeout)
+            else:
+                if btn not in self.original_modifiers:
+                    self.original_modifiers.append(btn)
+                self.ledit_grub_timeout.setText(timeout)
+
+        elif (timeout == 'None' or timeout =='-1' ) :
+            if self.checkBox_boot_default_entry_after.isChecked():
+                if btn  not in self.original_modifiers:
+                    self.original_modifiers.append(btn)
+            else:
+                if btn  not in self.original_modifiers:
+                    self.original_modifiers.append(btn)
+            self.checkBox_boot_default_entry_after.setChecked(False)
+        self.handle_modify()
+
+    def checkBox_show_menu_callback(self):
+        """ on toggled handler for checkBox_show_menu """
+
+        timeout_style = getValue('GRUB_TIMEOUT_STYLE=',self)
+        btn=self.sender()
+        if timeout_style == 'menu':
+            if btn.isChecked():
+                if btn in self.original_modifiers:
+                    self.original_modifiers.remove(btn)
+            else:
+                if btn not in self.original_modifiers:
+                    self.original_modifiers.append(btn)
+        elif timeout_style == 'hidden':
+            if not btn.isChecked():
+                if btn in self.original_modifiers:
+                    self.original_modifiers.remove(btn)
+            else:
+                if btn not in self.original_modifiers:
+                    self.original_modifiers.append(btn)
+        self.handle_modify()
+
     def load_configuration_from_callback(self,value):
         global file_loc
         print(self.configurations[value],'load configuration from callback')
@@ -292,7 +368,39 @@ class Ui(QtWidgets.QMainWindow):
             self.ledit_grub_timeout.setText(str(0.0))
             
         
+    def set_comboBox_grub_default(self):
+        """ sets the right index to comboBox_grub_default and radio buttons,
+        if second argument is true then value of grub_default by reading will be returned"""
+        grub_default_val =getValue('GRUB_DEFAULT=',self)
+        if grub_default_val[0]=='"':
+            grub_default_val= grub_default_val[1:]
+        if grub_default_val[-1]=='"':
+            grub_default_val=grub_default_val[:-1]
+            
         
+        if grub_default_val=='saved':
+            self.previously_booted_entry.setChecked(True)
+            # self.comboBox_grub_default.setCurrentIndex(0)
+        elif grub_default_val=='None':
+            self.previously_booted_entry.setChecked(False)
+            self.predefined.setChecked(False)
+        else:
+            self.predefined.setChecked(True)
+            # print(self.all_entries)
+            grub_default_val=grub_default_val.replace('>',' >')
+            self.comboBox_grub_default.setCurrentIndex(self.all_entries.index(grub_default_val))    
+
+    def get_comboBox_grub_default(self):
+        """returns the value comboBox grub_default should have"""
+        grub_default_val =getValue('GRUB_DEFAULT=',self)
+        if grub_default_val[0]=='"':
+            grub_default_val= grub_default_val[1:]
+        if grub_default_val[-1]=='"':
+            grub_default_val=grub_default_val[:-1]
+            
+        grub_default_val=grub_default_val.replace('>',' >')
+        return grub_default_val
+                
     def setUiElements(self,no_snapshot=False):
         """reloads the ui elements that should be reloaded"""
         timeout=getValue('GRUB_TIMEOUT=',self)
@@ -304,7 +412,7 @@ class Ui(QtWidgets.QMainWindow):
         
         
         
-        #stores the available configurations
+        #stores the available configuration files
         self.configurations=['/etc/default/grub']
         
         #add the available configurations to the combo box
@@ -323,6 +431,7 @@ class Ui(QtWidgets.QMainWindow):
             
         for item in self.configurations:
             self.comboBox_configurations.addItem(item)
+            # print(self.comboBox_configurations.itemData(123))
         
         global file_loc
         print('file_loc is now',file_loc)
@@ -343,24 +452,8 @@ class Ui(QtWidgets.QMainWindow):
             self.checkBox_show_menu.setChecked(False)
         elif getValue('GRUB_TIMEOUT_STYLE=',self)=='menu':
             self.checkBox_show_menu.setChecked(True)
-        grub_default_val =getValue('GRUB_DEFAULT=',self)
-        if grub_default_val[0]=='"':
-            grub_default_val= grub_default_val[1:]
-        if grub_default_val[-1]=='"':
-            grub_default_val=grub_default_val[:-1]
-            
-        
-            
-        if grub_default_val=='saved':
-            self.previously_booted_entry.setChecked(True)
-            # self.comboBox_grub_default.setCurrentIndex(0)
-        elif grub_default_val=='None':
-            self.previously_booted_entry.setChecked(False)
-            self.predefined.setChecked(False)
-        else:
-            self.predefined.setChecked(True)
-            # self.comboBox_grub_default.setCurrentIndex(self.all_entries.index(grub_default_val))
-            
+
+        self.set_comboBox_grub_default()
             
         if getValue('GRUB_TIMEOUT=',self)=='-1' or getValue('GRUB_TIMEOUT=',self)=='None':
             self.checkBox_boot_default_entry_after.setChecked(False)
@@ -383,7 +476,6 @@ class Ui(QtWidgets.QMainWindow):
         
     def saveConfs(self):
         
-        # reset the string
         self.lbl_details_text=''
         
         
@@ -416,7 +508,6 @@ class Ui(QtWidgets.QMainWindow):
             try:
                 
                 
-                #! todo find a way to show an error message if something goes wrong 
                 process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && cp -f  "{HOME}/.cache/grub-editor/temp.txt"  '+write_file +' && sudo update-grub 2>&1 \'  '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
                 self.lbl_details_text='Waiting for authentication \n'
                 
@@ -451,18 +542,18 @@ class Ui(QtWidgets.QMainWindow):
                                 pass
                     break
 
-                    if self.lbl_details is not None:
-                        for line in process.stdout:
-                            sys.stdout.write(line.decode())
-                            try:
-                                last = self.lbl_details.text()
-                                print('last is ',last)
-                                self.lbl_details.setText(last+line.decode())
-                            except:
-                                #! todo 
-                                print('looks like label was deleted')
+                    # if self.lbl_details is not None:
+                    #     for line in process.stdout:
+                    #         sys.stdout.write(line.decode())
+                    #         try:
+                    #             last = self.lbl_details.text()
+                    #             print('last is ',last)
+                    #             self.lbl_details.setText(last+line.decode())
+                    #         except:
+                    #             #! todo 
+                    #             print('looks like label was deleted')
                             
-                        break
+                    #     break
                 if not authentication_error:
                     self.lbl_status.setText('Saved successfully')
                 else:
@@ -490,7 +581,6 @@ class Ui(QtWidgets.QMainWindow):
 
 
     def btn_show_details_callback(self,tab):
-        #! todo make sure the the scroll area is created below this button
         print(self.verticalLayout_2.itemAt(1))
         target_index=None
         for i in range(self.verticalLayout_2.count()):
@@ -601,6 +691,7 @@ class Ui(QtWidgets.QMainWindow):
             self.lbl_status.setText('saving do not close')
             self.lbl_status.setStyleSheet('color:#03fc6f;')
         
+        
         print(interrupt,'interrupt')
         if not interrupt:
             self.saveConfs()
@@ -611,10 +702,7 @@ class Ui(QtWidgets.QMainWindow):
         file_loc='/etc/default/grub'
         print(self.sender().parent().deleteLater())
         self.setUiElements()
-        # if 'QFrame' in str(self.verticalLayout_2.itemAt(1).widget()):
-        #     self.verticalLayout_2.itemAt(1).widget().deleteLater()
-        # elif 'QFrame' in str(self.verticalLayout_2.itemAt(1).widget()):
-        #     self.verticalLayout_2.itemAt(2).widget().deleteLater()
+
             
             
     def btn_view_callback(self,arg):
@@ -634,77 +722,7 @@ class Ui(QtWidgets.QMainWindow):
             self.view_btn_win.btn_default_text_editor_callback()
         else:
             print('ERROR: unknown value for view_default on main.json',view_default)
-        # if not self.findChild(QtWidgets.QFrame,'frame'):
-        #     #create frame
-        #     self.frame = QtWidgets.QFrame(self.edit_configurations)
-        #     self.frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        #     self.frame.setFrameShadow(QtWidgets.QFrame.Raised)
-        #     self.frame.setObjectName("frame")
-            
-            
-            
-        #     self.lbl_snapshot_view= QtWidgets.QLabel(self.frame)
-        #     self.lbl_snapshot_view.setObjectName('lbl_snapshot_view')
-        #     self.lbl_snapshot_view.setText('You are currently looking at snapshot from '+arg)
-        #     # self.lbl_snapshot_view.setStyleSheet('QLabel{border:1px solid #ff0000;\
-        #     #                                      border-radius: 10px 10px 10px 10px;}')
-        #     self.lbl_snapshot_view.setWordWrap(True)
-        #     self.lbl_snapshot_view.setMinimumSize(100,30)
-        #     self.HLayout_=QtWidgets.QHBoxLayout()
-        #     print('executed')
-        #     self.HLayout_.setObjectName('HLayout_')
-        #     self.HLayout_.setContentsMargins(500,50,-1,-1)
-            
-            
-        #     # the '.' in the string is there to avoid QLabel getting affected
-        #     self.frame.setStyleSheet('.QFrame{border:1px solid #ff0000;\
-        #                                          border-radius: 10px 10px 10px 10px;}')
-            
 
-            
-            
-            
-            
-        #     # self.HLayout_.addWidget(self.lbl_snapshot_view)
-            
-        #     #button to reverto to original
-        #     self.btn_show_orginal =QtWidgets.QPushButton(self.frame)
-        #     self.btn_show_orginal.setObjectName('btn_show_original')
-        #     self.btn_show_orginal.setText('Show original configuration')
-        #     self.btn_show_orginal.clicked.connect(self.btn_show_orginal_callback)
-        #     # self.HLayout_.addWidget(self.btn_show_orginal)
-            
-            
-            
-        #     self.gridLayout_3 = QtWidgets.QGridLayout(self.frame)
-        #     self.gridLayout_3.setObjectName("gridLayout_3")
-        #     self.gridLayout_3.addWidget(self.lbl_snapshot_view, 0, 0, 1, 1)
-        #     self.gridLayout_3.addWidget(self.btn_show_orginal, 0, 1, 1, 1)
-        #     # self.verticalLayout_2.addWidget(self.frame)
-        #     self.verticalLayout.insertWidget(0, self.frame)
-            
-            
-            
-            
-            
-            
-        #     # add 20 px margin to top of the HLayout_
-        #     # self.HLayout_.setContentsMargins(0,0,20, 0)
-            
-        #     # self.verticalLayout.addLayout(self.HLayout_)
-        #     self.lbl_snapshot_view.setText('You are currently looking at snapshot from '+arg)
-            
-            
-            
-            
-        #     print(arg,'arg')
-        #     print(self.configurations.index(arg))
-        #     self.comboBox_configurations.setCurrentIndex(1)
-        #     self.tabWidget.setCurrentIndex(0)
-            
-        # else:
-        #     self.verticalLayout.itemAt(3)
-        #     self.lbl_snapshot_view.setText('You are currently looking at snapshot from '+arg)
                 
     def set_btn_callback(self,line):
         start = perf_counter()
@@ -885,10 +903,83 @@ class Ui(QtWidgets.QMainWindow):
         for i in reversed(range(len(items))):
             layout.addWidget(items[i])
 
-            
-            
+    def comboBox_grub_default_callback(self):
+        """ ontoggle callback """
+        print('combo box currentIndexChanged')
+        comboBox = self.sender()
+        combo_text =self.all_entries[comboBox.currentIndex()]
+        grub_default = self.get_comboBox_grub_default()
+        if grub_default !=combo_text and not self.modified_original:
+            # self.modified_original = True
+            if comboBox not in self.original_modifiers:
+                self.original_modifiers.append(self.sender())
+            print(grub_default,combo_text)
+        elif grub_default ==combo_text:
+            if comboBox in self.original_modifiers:
+                self.original_modifiers.remove(comboBox)
+
+        print('modifed original is now',self.modified_original)
+        print('original modifiers',self.original_modifiers)
+        print(self.comboBox_configurations.itemData(1))
+        self.handle_modify()
+    def get_radiobutton_predefined(self):
+        """returns the value radio button predefined should have now"""
+        
+        
+    def radiobutton_toggle_callback(self):
+        btn= self.sender()
+        grub_default_val =self.get_comboBox_grub_default()
 
             
+        
+        print(btn.text(),'btn.text() radiobutton_toggle_callback')
+        if btn.text()=='predefined:':
+            print('yes')
+            default_entry =getValue('GRUB_DEFAULT=',self)
+            print('grub_default')
+            if (default_entry !='saved' and default_entry.lower() !='none') and btn.isChecked():
+                if btn  in self.original_modifiers:
+                    self.original_modifiers.remove(btn)  
+                print('1st')  
+            elif (default_entry =='saved' or default_entry.lower() =='none') and not btn.isChecked():
+                if btn in self.original_modifiers:
+                    self.original_modifiers.remove(btn)
+                print('2nd')
+            else:
+                print('last')
+                if btn not in self.original_modifiers:
+                    self.original_modifiers.append(btn)
+        print(self.original_modifiers)
+        self.handle_modify()
+
+    def handle_modify(self):
+        """ handles when the loaded configuration is modified in the apps . 
+        it changes the loaded configuration from combo box value""" 
+        if len(self.original_modifiers)>0:
+            current_item = self.configurations[self.comboBox_configurations.currentIndex()]
+            print(current_item)
+            stringy=current_item+'(modified)'
+            self.comboBox_configurations.blockSignals(True)
+            self.comboBox_configurations.addItem(stringy)
+            self.configurations.append(stringy)
+            self.comboBox_configurations.setCurrentIndex(self.comboBox_configurations.count()-1)
+            self.comboBox_configurations.blockSignals(False)
+        else:
+            index_to_remove =[]
+            for item in self.configurations:
+                self.comboBox_configurations.blockSignals(True)
+                if '(modified)' in item:
+                    item_name = item.replace('(modified)','')
+                    index_to_put_after = self.configurations.index(item_name)
+                    # print(item_name)
+                    index_to_remove.append(self.configurations.index(item))
+                    self.comboBox_configurations.removeItem(self.configurations.index(item))
+                    self.comboBox_configurations.setCurrentIndex(index_to_put_after)
+                    break
+            self.comboBox_configurations.blockSignals(False)
+            # print(index_to_remove)
+            
+        
     def createSnapshotList(self):
         contents = subprocess.check_output([f'ls {HOME}/.grub-editor/snapshots/'],shell=True).decode()
         self.lines =contents.splitlines()
@@ -899,21 +990,21 @@ class Ui(QtWidgets.QMainWindow):
 
         self.reconnect(self.btn_create_snapshot.clicked,self.createSnapshot)
         # self.VLayout_snapshot.addWidget(self.btn_create_snapshot)
-        print(len(self.lines))
+        # print(len(self.lines))
         if len(self.lines) >0 and  self.lbl_no_snapshots:
-            self.lbl_no_snapshots.deleteLater()
-            self.lbl_no_snapshots= None
+            self.lbl_no_snapshots.setText('Snapshots are backups of /etc/default/grub .Snapshots can help you when you mess up some configuration in /etc/default/grub . These snapshots are stored inside ~/.grub-editor/snapshots/')
+            # self.lbl_no_snapshots= None
             
-        elif len(self.lines) ==0 and not self.lbl_no_snapshots:
+        elif len(self.lines) ==0 :
             print('lines are zero and label wasnt found soo.. creating that lbl_nosnapshots')
-            self.lbl_no_snapshots = QtWidgets.QLabel(self.conf_snapshots)
-            self.lbl_no_snapshots.setWordWrap(True)
-            self.lbl_no_snapshots.setObjectName("lbl_no_snapshots")
+            # self.lbl_no_snapshots = QtWidgets.QLabel(self.conf_snapshots)
+            # self.lbl_no_snapshots.setWordWrap(True)
+            # self.lbl_no_snapshots.setObjectName("lbl_no_snapshots")
             self.lbl_no_snapshots.setText('Looks like you dont have any snapshots .Snapshots are backups of /etc/default/grub .Snapshots can help you when you mess up some configuration in /etc/default/grub . These snapshots are stored inside ~/.grub-editor/snapshots/')
             self.lbl_no_snapshots.setWordWrap(True)
             # self.gridLayout_2.addWidget(self.lbl_no_snapshots, 1, 0, 1, 1)
-            self.insertInto(self.gridLayout_2,1,self.lbl_no_snapshots)
-            print(self.gridLayout_2.itemAt(1))
+            # self.insertInto(self.gridLayout_2,1,self.lbl_no_snapshots)
+            # print(self.gridLayout_2.itemAt(1))
         else:
             print('unexpected condition in line 895 when loking for lbl_no_snapshots')
         for line in self.lines:
@@ -926,7 +1017,10 @@ class Ui(QtWidgets.QMainWindow):
             #set all the buttons that appear on conf_snapshots (for a single snapshots)
             self.lineEdit = QtWidgets.QLabel(self.conf_snapshots)
             self.lineEdit.setObjectName(f"lbl_snapshot{number}")
-            self.lineEdit.setText(line)
+            if len(line) <self.snapshot_lbl_len:
+                self.lineEdit.setText(line)
+            else:
+                self.lineEdit.setText(line[:self.snapshot_lbl_len-3]+'...')
             self.HLayouts_list[-1].addWidget(self.lineEdit)
             self.pushButton_3 = QtWidgets.QPushButton(self.conf_snapshots)
             self.pushButton_3.setObjectName(f"btn_rename{number}")

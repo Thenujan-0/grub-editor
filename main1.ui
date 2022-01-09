@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>546</width>
+    <width>700</width>
     <height>505</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>700</width>
+    <height>0</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>Grub Editor</string>
@@ -21,7 +27,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="edit_configurations">
        <attribute name="title">
@@ -259,15 +265,12 @@
         <string>conf snapshots</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_2">
-        <item row="0" column="0">
+        <item row="2" column="0">
          <widget class="QPushButton" name="btn_create_snapshot">
           <property name="text">
            <string>create a snapshot now</string>
           </property>
          </widget>
-        </item>
-        <item row="2" column="0">
-         <layout class="QVBoxLayout" name="VLayout_snapshot"/>
         </item>
         <item row="1" column="0">
          <widget class="QLabel" name="lbl_no_snapshots">
@@ -277,6 +280,41 @@
           <property name="wordWrap">
            <bool>true</bool>
           </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QScrollArea" name="scrollArea">
+          <property name="horizontalScrollBarPolicy">
+           <enum>Qt::ScrollBarAlwaysOff</enum>
+          </property>
+          <property name="sizeAdjustPolicy">
+           <enum>QAbstractScrollArea::AdjustToContents</enum>
+          </property>
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <widget class="QWidget" name="scrollAreaWidgetContents">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>656</width>
+             <height>279</height>
+            </rect>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_8">
+            <item row="0" column="0">
+             <layout class="QVBoxLayout" name="VLayout_snapshot_parent">
+              <property name="topMargin">
+               <number>40</number>
+              </property>
+              <item>
+               <layout class="QVBoxLayout" name="VLayout_snapshot"/>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
          </widget>
         </item>
        </layout>
@@ -316,7 +354,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>546</width>
+     <width>700</width>
      <height>30</height>
     </rect>
    </property>
