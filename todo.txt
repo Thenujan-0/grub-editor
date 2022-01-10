@@ -1,6 +1,5 @@
 1.show dialog on create snapshot button press
 2.check if the current grub.cfg is up to date with /etc/default/grub
-3.check if others operating systems are there by executing os prober and if it takes too long then use grub.cfg to find out
+3.check if other operating systems are there by executing os prober and if it takes too long then use grub.cfg to find out
 and then if other operating systems are there instruct the user to use 0.0 instead of 0 in timeout
-4.define a function to get the index(index that is supposed to be there) of comboBox_grub_default 
-5.change arguments of getValue function remove object and replace it with the list to append issues to
+6.improve compatiblity with commented out lines in the /etc/default/grub
