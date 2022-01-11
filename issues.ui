@@ -19,6 +19,11 @@
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
        <widget class="QLabel" name="label">
+        <property name="font">
+         <font>
+          <pointsize>15</pointsize>
+         </font>
+        </property>
         <property name="text">
          <string>Some issues were found on the /etc/default/grub</string>
         </property>
@@ -26,6 +31,41 @@
       </item>
       <item>
        <widget class="QListWidget" name="listWidget"/>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Grub-editor might not be able to function properly because of these issues.It is recommended that you fix these isues manually</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <property name="bottomMargin">
+         <number>10</number>
+        </property>
+        <item>
+         <widget class="QPushButton" name="btn_quit">
+          <property name="text">
+           <string>Quit</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btn_open_file">
+          <property name="text">
+           <string>Open /etc/default/grub</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btn_open_grubeditor">
+          <property name="text">
+           <string>Open grub-editor anyway</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </item>

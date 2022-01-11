@@ -13,8 +13,8 @@ import traceback
 import json
 import random
 import math
-
-
+from PyQt5.QtWidgets import QMainWindow, QLabel
+from PyQt5.QtWidgets import QGridLayout, QWidget, QDesktopWidget
 
 
 file_loc='/etc/default/grub'
@@ -30,8 +30,7 @@ PATH = os.path.dirname(os.path.realpath(__file__))
 to_write_data=None
 
 
-
-
+# @trace
 def getValue(name,issues):
     """arguments are  the string to look for 
     and the list to append issues to"""
@@ -255,7 +254,18 @@ class Ui(QtWidgets.QMainWindow):
         self.threadpool= QtCore.QThreadPool()
         uic.loadUi(f'{PATH}/main1.ui',self)
         self.show()
+
+        #make sure window is in center of the screen
+        qtRectangle = self.frameGeometry()
+        centerPoint = QDesktopWidget().availableGeometry().center()
+        qtRectangle.moveCenter(centerPoint)
+        self.move(qtRectangle.topLeft())
+
+
+        #handle resize event it is used to define the maximum length of snapshot labels
         self.resized.connect(self.someFunction)
+
+
         #dictionary to store qlineEdits for rename .stored widget is qlineEditWidget. key is index of the row
         self.rename_line_edits={}
         
@@ -522,23 +532,29 @@ class Ui(QtWidgets.QMainWindow):
         else:
             setValue('GRUB_TIMEOUT_STYLE=','hidden')
         
-        self.grub_default =str(self.comboBox_grub_default.currentText())
-        if self.grub_default.count('>') <=1:
-            pass
-            if '>' in self.grub_default:
-                front_part=self.grub_default[:self.grub_default.find(' >')]
-                last_part=self.grub_default[self.grub_default.find('>'):]
-                to_write='"'+front_part+last_part+'"'
-                setValue('GRUB_DEFAULT=',to_write)
-                # print(to_write+'part to be written')
+
+        if self.predefined.isChecked():
+
+            self.grub_default =str(self.comboBox_grub_default.currentText())
+
+            if self.grub_default.count('>') <=1:
+
+                if '>' in self.grub_default:
+                    front_part=self.grub_default[:self.grub_default.find(' >')]
+                    last_part=self.grub_default[self.grub_default.find('>'):]
+                    to_write='"'+front_part+last_part+'"'
+                    setValue('GRUB_DEFAULT=',to_write)
+                    # print(to_write+'part to be written')
+                else:
+                    setValue('GRUB_DEFAULT=','\"'+self.grub_default+'\"')
+                #set the value of grub_default
             else:
-                setValue('GRUB_DEFAULT=','\"'+self.grub_default+'\"')
-            #set the value of grub_default
-        else:
-            print('Error occured when setting grub default as combobox text has more than one  1\' >\'  ')
-            self.lbl_status.setText('Error occured when setting grub default as combobox text has more than one  1\' >\'  ')
-            print(self.grub_default)
-            
+                print('Error occured when setting grub default as combobox text has more than one  1\' >\'  ')
+                self.lbl_status.setText('Error occured when setting grub default as combobox text has more than one  1\' >\'  ')
+                print(self.grub_default)
+        elif self.previously_booted_entry.isChecked():
+            setValue('GRUB_DEFAULT=','saved')
+
         if self.checkBox_boot_default_entry_after.isChecked():
             setValue('GRUB_TIMEOUT=',self.ledit_grub_timeout.text())
         else:
@@ -614,13 +630,14 @@ class Ui(QtWidgets.QMainWindow):
         
     def btn_create_snapshot_callback(self):
         preference= get_preference("create_snapshot")
-        if preference==None:
+        print(preference)
+        if preference=="None" and len(self.original_modifiers)>0:
             self.create_snapshot_dialog = CreateSnapshotUi()
             self.create_snapshot_dialog.btn_ignore_changes.clicked.connect(self.btn_ignore_changes_callback)
-
+            self.create_snapshot_dialog.btn_add_changes_to_snapshot.clicked.connect(self.btn_add_changes_to_snapshot_callback)
             self.create_snapshot_dialog.show() 
         else:
-            #! todo handle other cases
+            # todo handle other cases
             self.createSnapshot()
         
 
@@ -629,8 +646,9 @@ class Ui(QtWidgets.QMainWindow):
         checked=self.create_snapshot_dialog.checkBox_do_this_everytime.isChecked()
         if checked:
             set_preference("create_snapshot","add_changes_to_snapshot")
-
-        #! todo actually add changes to the snapshot
+        self.saveConfsToCache()
+        self.createSnapshot(from_cache=True)
+        self.create_snapshot_dialog.close()
 
     def btn_ignore_changes_callback(self):
         """ a part of CreateSnapshotUi window """
@@ -641,14 +659,19 @@ class Ui(QtWidgets.QMainWindow):
             set_preference("create_snapshot","ignore_changes")
 
 
-    def createSnapshot(self):
-        """ should be named btn_create_snapshot_callback😥 """
+    def createSnapshot(self,from_cache=False):
+        """ creates a snapshot of /etc/default/grub and saves to ~/grub-editor/{date_time}
+        if from_cache is true then copies the file in cache(~/.cache/grub-editor/temp.txt) to ~/grub-editor/{date_time}  """
         with open(file_loc) as file:
             data= file.read()
         date_time =str(dt.now()).replace(' ','_')[:-7]
-        subprocess.Popen([f'touch {HOME}/.grub-editor/snapshots/{date_time}'],shell=True)
-        with open(f'{HOME}/.grub-editor/snapshots/{date_time}','w') as file:
-            file.write(data)
+        if not from_cache:
+            subprocess.Popen([f'touch {HOME}/.grub-editor/snapshots/{date_time}'],shell=True)
+            with open(f'{HOME}/.grub-editor/snapshots/{date_time}','w') as file:
+                file.write(data)
+        else:
+            print('created a snapshot grom cache')
+            subprocess.Popen([f'cp {HOME}/.cache/grub-editor/temp.txt {HOME}/.grub-editor/snapshots/{date_time}'],shell=True)
         self.setUiElements()
 
 
@@ -669,11 +692,8 @@ class Ui(QtWidgets.QMainWindow):
         btn=self.sender()
         if btn.text()=='Show Details':
             
-            #! todo
-       #     if tab=='edit_configurations':
+            # todo
             self.scrollArea = QtWidgets.QScrollArea()
-       #     elif tab=='conf_snapshots':
-      #          self.scrollArea = QtWidgets.QScrollArea(self.conf_snapshots)
             self.scrollArea.setWidgetResizable(True)
             self.scrollArea.setObjectName("scrollArea")
             self.scrollAreaWidgetContents = QtWidgets.QWidget()
@@ -1136,7 +1156,10 @@ class IssuesUi(QtWidgets.QMainWindow):
     def __init__(self,issues):
         super(IssuesUi, self).__init__()
         uic.loadUi('issues.ui',self)
-        
+        qtRectangle = self.frameGeometry()
+        centerPoint = QDesktopWidget().availableGeometry().center()
+        qtRectangle.moveCenter(centerPoint)
+        self.move(qtRectangle.topLeft())
         for issue in issues:
             print(issue)
             self.listWidget.addItem(issue)
@@ -1148,7 +1171,10 @@ class ViewButtonUi(QtWidgets.QDialog):
         uic.loadUi('view_snapshot.ui',self)
         self.btn_on_the_application_itself.clicked.connect(self.btn_on_the_application_itself_callback)
         self.btn_default_text_editor.clicked.connect(self.btn_default_text_editor_callback)
-
+        qtRectangle = self.frameGeometry()
+        centerPoint = QDesktopWidget().availableGeometry().center()
+        qtRectangle.moveCenter(centerPoint)
+        self.move(qtRectangle.topLeft())
     def safe_close(self,arg):
         if self.checkBox_do_this_everytime.isChecked():
             set_preference('view_default',arg)
@@ -1166,8 +1192,12 @@ class CreateSnapshotUi(QtWidgets.QMainWindow):
     def __init__(self):
         super(CreateSnapshotUi, self).__init__()
         uic.loadUi('create_snapshot_dialog.ui',self)
-
-
+        
+        #Put the window in the center of the screen
+        qtRectangle = self.frameGeometry()
+        centerPoint = QDesktopWidget().availableGeometry().center()
+        qtRectangle.moveCenter(centerPoint)
+        self.move(qtRectangle.topLeft())
 
 app =QtWidgets.QApplication(sys.argv)
 window=Ui()
