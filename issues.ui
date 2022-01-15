@@ -37,6 +37,9 @@
         <property name="text">
          <string>Grub-editor might not be able to function properly because of these issues.It is recommended that you fix these isues manually</string>
         </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
        </widget>
       </item>
       <item>
