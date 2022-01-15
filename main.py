@@ -61,6 +61,10 @@ subprocess.Popen([f'touch {HOME}/.grub-editor/logs/main.log'],shell=True)
 
 logging.basicConfig(filename=f'{HOME}/.grub-editor/logs/main.log',format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+def check_dual_boot():
+    out = subprocess.check_output(['os-prober'],shell=True).decode()
+
+
 def getValue(name,issues):
     """arguments are  the string to look for 
     and the list to append issues to"""
@@ -299,6 +303,10 @@ class Ui(QtWidgets.QMainWindow):
         qtRectangle.moveCenter(centerPoint)
         self.move(qtRectangle.topLeft())
 
+
+        #possible windows
+        self.set_recommendations_window=None
+        
 
         #handle resize event it is used to define the maximum length of snapshot labels
         self.resized.connect(self.someFunction)
@@ -811,23 +819,35 @@ class Ui(QtWidgets.QMainWindow):
                 
             btn.setText('Show Details')
     
-    def btn_set_callback(self):
+    def btn_set_callback(self,unsafe=False):
+
+        """ if argument is true then it checks configurations for recommendations and errors """
+
+        self.recommendations=[]
+        self.recmds_fixes=[]
         grub_timeout_value=self.ledit_grub_timeout.text()
-        interrupt=None
+        interrupt=0
         # sleep(5)
+        # if safe:
         if self.checkBox_boot_default_entry_after.isChecked() and grub_timeout_value=='0':
-            self.ledit_grub_timeout.setText('Use 0.0 instead of 0 ')
-            self.ledit_grub_timeout.selectAll()
-            self.ledit_grub_timeout.setFocus()
-            #! todo here
+            # self.ledit_grub_timeout.setText('Use 0.0 instead of 0 ')
+            # self.ledit_grub_timeout.selectAll()
+            # self.ledit_grub_timeout.setFocus()
+            self.recommendations.append('If you are doing dual boot it is preffered to use 0.0 instead of 0 as timeout')
+            def temp():
+                self.ledit_grub_timeout.setText('0.0')
+            self.recmds_fixes.append(temp)
+
+
         elif self.checkBox_boot_default_entry_after.isChecked() :
             try:
                 float(grub_timeout_value)
-                
+                #? kinda dead code here
             except Exception as e:
-                interrupt=1
+                interrupt+=1
                 printer(e)
-                self.ledit_grub_timeout.setText('not a number error')
+                # self.lbl_status.setText('not a number error')
+                # self.set_errors.append('')
                 self.ledit_grub_timeout.selectAll()
                 self.ledit_grub_timeout.setFocus()
         
@@ -866,10 +886,15 @@ class Ui(QtWidgets.QMainWindow):
         
         
         printer(interrupt,'interrupt')
-        if not interrupt:
+        if not unsafe:
+            if not interrupt and len(self.recommendations)==0:
+                self.saveConfs()
+            if len(self.recommendations)>0:
+                self.set_recommendations_window=SetRecommendations(self.recommendations,self.recmds_fixes)
+                self.set_recommendations_window.show()
+        else:
             self.saveConfs()
 
-        self.setUiElements()
             
 
     def btn_show_orginal_callback(self):
@@ -1316,6 +1341,80 @@ class CreateSnapshotUi(QtWidgets.QMainWindow):
         centerPoint = QDesktopWidget().availableGeometry().center()
         qtRectangle.moveCenter(centerPoint)
         self.move(qtRectangle.topLeft())
+
+
+class SetRecommendations(QtWidgets.QMainWindow):
+    def __init__(self,recommendations_list,fixes_list):
+        super(SetRecommendations,self).__init__()
+        uic.loadUi(f'{PATH}/set_recommendations.ui',self)
+
+        #Put the window in the center of the screen
+        qtRectangle = self.frameGeometry()
+        centerPoint = QDesktopWidget().availableGeometry().center()
+        qtRectangle.moveCenter(centerPoint)
+        self.move(qtRectangle.topLeft())
+        self.fixes_list =fixes_list
+        # self.HLayouts=[]
+        # todo : for every element in list it should iterate thorugh them and create layout 
+        for i in range(len(recommendations_list)):
+            recommendation =recommendations_list[i]
+            self.horizontalLayout = QtWidgets.QHBoxLayout()
+            self.horizontalLayout.setObjectName("horizontalLayout")
+            self.label = QtWidgets.QLabel(self.scrollAreaWidgetContents)
+            self.label.setWordWrap(True)
+            self.label.setObjectName("label")
+            self.label.setText(recommendation)
+            self.horizontalLayout.addWidget(self.label)
+            spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+            self.horizontalLayout.addItem(spacerItem)
+            self.pushButton = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
+            self.pushButton.setObjectName("pushButton")
+            self.pushButton.setText('Fix')
+            print(self.horizontalLayout)
+
+
+            self.pushButton.clicked.connect(self.btn_fix_callback_creator(self.horizontalLayout,fixes_list[i],self.verticalLayout_2))
+            self.horizontalLayout.addWidget(self.pushButton)
+            self.pushButton_2 = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
+            self.pushButton_2.setObjectName("pushButton_2")
+            self.pushButton_2.setText("Ignore")
+            self.horizontalLayout.addWidget(self.pushButton_2)
+            # self.HLayouts.append(self.horizontalLayout)
+            self.verticalLayout_2.addLayout(self.horizontalLayout)
+
+        self.btn_ignore_all.clicked.connect(self.btn_ignore_all_callback)
+        self.btn_fix_all.clicked.connect(self.btn_fix_all_callback)
+
+    def btn_ignore_all_callback(self):
+        window.btn_set_callback(unsafe=True)
+        window.set_recommendations_window.close()
+
+    def btn_fix_all_callback(self):
+        for fix in self.fixes_list:
+            fix()
+        window.btn_set_callback()
+        window.set_recommendations_window.close()
+
+
+    def btn_fix_callback_creator(self,HLayout,fix,verticalLayout_2):
+        """ first argument is the HorizontalLayout of button and second argument is the function that fixes the issue
+        and the third the the vertical layout where these horizontal layout are located"""
+        def btn_fix_callback(self):
+            fix()
+            clearLayout(HLayout)
+
+            if verticalLayout_2.count() == 0:
+                window.set_recommendations_window.close()
+                window.btn_set_callback()       
+     
+            # todo : check if vertical
+            
+        return btn_fix_callback
+
+    def btn_ignore_callback_creator(self,HLayout):
+        def btn_ignore_callback(self):
+            clearLayout(HLayout)
+        return btn_fix_callback
 
 app =QtWidgets.QApplication(sys.argv)
 window=Ui()
