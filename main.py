@@ -881,60 +881,69 @@ class Ui(QtWidgets.QMainWindow):
             
             
     def btn_view_callback(self,arg):
-        global file_loc
-        file_loc= f'{HOME}/.grub-editor/snapshots/'+arg
-        self.setUiElements()
-        view_default=get_preference('view_default')
-        self.view_btn_win =ViewButtonUi(file_loc)
-        if view_default=='None':
-            
-            self.view_btn_win.show()
-        elif view_default=='on_the_application_itself':
-            
-            self.view_btn_win.btn_on_the_application_itself_callback()
-            
-        elif view_default=='default_text_editor':
-            self.view_btn_win.btn_default_text_editor_callback()
-        else:
-            printer('ERROR: unknown value for view_default on main.json',view_default)
-
+        try:
+            global file_loc
+            file_loc= f'{HOME}/.grub-editor/snapshots/'+arg
+            self.setUiElements()
+            view_default=get_preference('view_default')
+            self.view_btn_win =ViewButtonUi(file_loc)
+            if view_default=='None':
+                
+                self.view_btn_win.show()
+            elif view_default=='on_the_application_itself':
+                
+                self.view_btn_win.btn_on_the_application_itself_callback()
+                
+            elif view_default=='default_text_editor':
+                self.view_btn_win.btn_default_text_editor_callback()
+            else:
+                printer('ERROR: unknown value for view_default on main.json',view_default)
+        except Exception as e:
+            printer(str(e))
+            printer(traceback.format_exc())
+            printer("An error occured in btn_View_callback")
                 
     def set_btn_callback(self,line):
-        start = perf_counter()
-        printer(f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
-        #! todo here
+        try:
+            start = perf_counter()
+            printer(f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
+            #! todo here
 
-        
-        self.setUiElements()
-        end=perf_counter()
-        
-        if not (self.verticalLayout_2.itemAt(1) and isinstance(self.verticalLayout_2.itemAt(1),QtWidgets.QHBoxLayout)) and \
-            not (self.verticalLayout_2.itemAt(2) and isinstance(self.verticalLayout_2.itemAt(2),QtWidgets.QHBoxLayout)):
-            #create a label to show user that saving
-            self.lbl_status= QtWidgets.QLabel(self.edit_configurations)
-            self.lbl_status.setText('waiting for authentication')
-            self.lbl_status.setStyleSheet('color:#03fc6f;')
             
+            self.setUiElements()
+            end=perf_counter()
             
-            
-            # self.verticalLayout.addWidget(self.lbl_status)
-            
-            # create a button (show details)
-            self.btn_show_details= QtWidgets.QPushButton(self.edit_configurations)
-            self.btn_show_details.setText('Show Details')
-            self.btn_show_details.clicked.connect(partial(self.btn_show_details_callback,'conf_snapshots'))
-            
-            #create a horizontal layout
-            self.HLayout_save= QtWidgets.QHBoxLayout()
-            self.HLayout_save.setObjectName('HLayout_save')
-            self.HLayout_save.addWidget(self.lbl_status)
-            self.HLayout_save.addWidget(self.btn_show_details)
-            self.verticalLayout_2.addLayout(self.HLayout_save)
-        #printer(end-start)
-        else:
-            self.lbl_status.setText('waiting for authentication')
-            
-        self.startWorker(line)
+            if not (self.verticalLayout_2.itemAt(1) and isinstance(self.verticalLayout_2.itemAt(1),QtWidgets.QHBoxLayout)) and \
+                not (self.verticalLayout_2.itemAt(2) and isinstance(self.verticalLayout_2.itemAt(2),QtWidgets.QHBoxLayout)):
+                #create a label to show user that saving
+                self.lbl_status= QtWidgets.QLabel(self.edit_configurations)
+                self.lbl_status.setText('waiting for authentication')
+                self.lbl_status.setStyleSheet('color:#03fc6f;')
+                
+                
+                
+                # self.verticalLayout.addWidget(self.lbl_status)
+                
+                # create a button (show details)
+                self.btn_show_details= QtWidgets.QPushButton(self.edit_configurations)
+                self.btn_show_details.setText('Show Details')
+                self.btn_show_details.clicked.connect(partial(self.btn_show_details_callback,'conf_snapshots'))
+                
+                #create a horizontal layout
+                self.HLayout_save= QtWidgets.QHBoxLayout()
+                self.HLayout_save.setObjectName('HLayout_save')
+                self.HLayout_save.addWidget(self.lbl_status)
+                self.HLayout_save.addWidget(self.btn_show_details)
+                self.verticalLayout_2.addLayout(self.HLayout_save)
+            #printer(end-start)
+            else:
+                self.lbl_status.setText('waiting for authentication')
+                
+            self.startWorker(line)
+        except Exception as e:
+            printer(traceback.format_exc())
+            printer(str(e))
+            printer('Error occured in set_btn_callback')
     def startWorker(self,line):
         worker = Worker(self.final,line)
         worker.signals.finished.connect(self.setUiElements)
@@ -1013,38 +1022,42 @@ class Ui(QtWidgets.QMainWindow):
             self.setUiElements()
         return func
     def btn_rename_callback(self,number):
-        btn = self.sender()
-        if btn.text() == 'rename':
-            self.ledit_ = QtWidgets.QLineEdit(self.conf_snapshots)
-            self.ledit_.setObjectName(f"ledit_{number}")
-            self.ledit_.returnPressed.connect(self.HLayouts_list[number].itemAt(1).widget().click)
-            self.rename_line_edits[number]=self.ledit_
-            self.targetLabel=self.HLayouts_list[number].itemAt(0).widget()
-            
-            self.rename_labels[number] = self.targetLabel
-            btn.parent().layout().replaceWidget(self.targetLabel,self.ledit_)
-            self.targetLabel.deleteLater()
-            self.ledit_.setText(self.lines[number])
-            self.ledit_.selectAll()
-            
-            self.ledit_.setFocus()
-            btn.setText('set name')
-            
-        elif btn.text() == 'set name':
-            self.targetLabel=self.rename_labels[number]
-            self.ledit_ = self.rename_line_edits[number]
-            text = self.ledit_.text()
-            line=self.lines[number]
-            subprocess.Popen([f'mv \'{HOME}/.grub-editor/snapshots/{line}\' \'{HOME}/.grub-editor/snapshots/{text}\' '],shell=True)
-            self.lbl_1 =QtWidgets.QLabel(self.conf_snapshots)
-            self.lbl_1.setObjectName(f"label{number}")
-            self.lbl_1.setText(self.lines[number])
-            
-            # printer(self.targetLabel.parent())
-            btn.parent().layout().replaceWidget(self.ledit_,self.lbl_1)
-            self.ledit_.deleteLater()
-            btn.setText('rename')
-            self.setUiElements()
+        try:
+            btn = self.sender()
+            if btn.text() == 'rename':
+                self.ledit_ = QtWidgets.QLineEdit(self.conf_snapshots)
+                self.ledit_.setObjectName(f"ledit_{number}")
+                self.ledit_.returnPressed.connect(self.HLayouts_list[number].itemAt(1).widget().click)
+                self.rename_line_edits[number]=self.ledit_
+                self.targetLabel=self.HLayouts_list[number].itemAt(0).widget()
+                
+                self.rename_labels[number] = self.targetLabel
+                btn.parent().layout().replaceWidget(self.targetLabel,self.ledit_)
+                self.targetLabel.deleteLater()
+                self.ledit_.setText(self.lines[number])
+                self.ledit_.selectAll()
+                
+                self.ledit_.setFocus()
+                btn.setText('set name')
+                
+            elif btn.text() == 'set name':
+                self.targetLabel=self.rename_labels[number]
+                self.ledit_ = self.rename_line_edits[number]
+                text = self.ledit_.text()
+                line=self.lines[number]
+                subprocess.Popen([f'mv \'{HOME}/.grub-editor/snapshots/{line}\' \'{HOME}/.grub-editor/snapshots/{text}\' '],shell=True)
+                self.lbl_1 =QtWidgets.QLabel(self.conf_snapshots)
+                self.lbl_1.setObjectName(f"label{number}")
+                self.lbl_1.setText(self.lines[number])
+                
+                # printer(self.targetLabel.parent())
+                btn.parent().layout().replaceWidget(self.ledit_,self.lbl_1)
+                self.ledit_.deleteLater()
+                btn.setText('rename')
+                self.setUiElements()
+        except Exception as e:
+            printer(traceback.format_exc())
+            printer(str(e))
             
         
         
@@ -1076,159 +1089,180 @@ class Ui(QtWidgets.QMainWindow):
             layout.addWidget(items[i])
 
     def comboBox_grub_default_on_current_index_change(self):
-        """ current index changed callback """
-        printer('combo box currentIndexChanged')
-        comboBox = self.sender()
-        combo_text =self.all_entries[comboBox.currentIndex()]
-        grub_default = self.get_comboBox_grub_default()
-        if grub_default !=combo_text and not self.modified_original:
-            # self.modified_original = True
-            if comboBox not in self.original_modifiers:
-                self.original_modifiers.append(self.sender())
-            printer(grub_default,combo_text)
-        elif grub_default ==combo_text:
-            if comboBox in self.original_modifiers:
-                self.original_modifiers.remove(comboBox)
+        try:
+            """ current index changed callback """
+            printer('combo box currentIndexChanged')
+            comboBox = self.sender()
+            combo_text =self.all_entries[comboBox.currentIndex()]
+            grub_default = self.get_comboBox_grub_default()
+            if grub_default !=combo_text and not self.modified_original:
+                # self.modified_original = True
+                if comboBox not in self.original_modifiers:
+                    self.original_modifiers.append(self.sender())
+                printer(grub_default,combo_text)
+            elif grub_default ==combo_text:
+                if comboBox in self.original_modifiers:
+                    self.original_modifiers.remove(comboBox)
 
-        printer('modifed original is now',self.modified_original)
-        printer('original modifiers',self.original_modifiers)
-        printer(self.comboBox_configurations.itemData(1))
-        self.handle_modify()
+            printer('modifed original is now',self.modified_original)
+            printer('original modifiers',self.original_modifiers)
+            printer(self.comboBox_configurations.itemData(1))
+            self.handle_modify()
+        except Exception as e:
+            printer(traceback.format_exc())
+            printer(str(e))
+
+
     def get_radiobutton_predefined(self):
         """returns the value radio button predefined should have now"""
         
         
     def radiobutton_toggle_callback(self):
-        btn= self.sender()
-        grub_default_val =self.get_comboBox_grub_default()
+        try:
+            btn= self.sender()
+            grub_default_val =self.get_comboBox_grub_default()
 
+                
             
-        
-        printer(btn.text(),'btn.text() radiobutton_toggle_callback')
-        if btn.text()=='predefined:':
-            printer('yes')
-            default_entry =getValue('GRUB_DEFAULT=',self.issues)
-            printer('grub_default')
-            if (default_entry !='saved' and default_entry.lower() !='none') and btn.isChecked():
-                if btn  in self.original_modifiers:
-                    self.original_modifiers.remove(btn)  
-                printer('1st')  
-            elif (default_entry =='saved' or default_entry.lower() =='none') and not btn.isChecked():
-                if btn in self.original_modifiers:
-                    self.original_modifiers.remove(btn)
-                printer('2nd')
-            else:
-                printer('last')
-                if btn not in self.original_modifiers:
-                    self.original_modifiers.append(btn)
-        printer(self.original_modifiers)
-        self.handle_modify()
+            printer(btn.text(),'btn.text() radiobutton_toggle_callback')
+            if btn.text()=='predefined:':
+                printer('yes')
+                default_entry =getValue('GRUB_DEFAULT=',self.issues)
+                printer('grub_default')
+                if (default_entry !='saved' and default_entry.lower() !='none') and btn.isChecked():
+                    if btn  in self.original_modifiers:
+                        self.original_modifiers.remove(btn)  
+                    printer('1st')  
+                elif (default_entry =='saved' or default_entry.lower() =='none') and not btn.isChecked():
+                    if btn in self.original_modifiers:
+                        self.original_modifiers.remove(btn)
+                    printer('2nd')
+                else:
+                    printer('last')
+                    if btn not in self.original_modifiers:
+                        self.original_modifiers.append(btn)
+            printer(self.original_modifiers)
+            self.handle_modify()
+
+        except Exception as e:
+            printer(traceback.format_exc())
+            printer(str(e))
 
     def handle_modify(self):
+        
         """ handles when the loaded configuration is modified in the apps . 
         it changes the loaded configuration from combo box value""" 
-        if len(self.original_modifiers)>0:
-            current_item = self.configurations[self.comboBox_configurations.currentIndex()]
-            printer(current_item)
-            if '(modified)' not in current_item:
-                stringy=current_item+'(modified)'
-                self.comboBox_configurations.blockSignals(True)
-                self.comboBox_configurations.addItem(stringy)
-                self.configurations.append(stringy)
-                self.comboBox_configurations.setCurrentIndex(self.comboBox_configurations.count()-1)
+
+        try:
+            if len(self.original_modifiers)>0:
+                current_item = self.configurations[self.comboBox_configurations.currentIndex()]
+                printer(current_item)
+                if '(modified)' not in current_item:
+                    stringy=current_item+'(modified)'
+                    self.comboBox_configurations.blockSignals(True)
+                    self.comboBox_configurations.addItem(stringy)
+                    self.configurations.append(stringy)
+                    self.comboBox_configurations.setCurrentIndex(self.comboBox_configurations.count()-1)
+                    self.comboBox_configurations.blockSignals(False)
+            else:
+                index_to_remove =[]
+                for item in self.configurations:
+                    self.comboBox_configurations.blockSignals(True)
+                    if '(modified)' in item:
+                        item_name = item.replace('(modified)','')
+                        index_to_put_after = self.configurations.index(item_name)
+                        # printer(item_name)
+                        index_to_remove.append(self.configurations.index(item))
+                        self.comboBox_configurations.removeItem(self.configurations.index(item))
+                        self.comboBox_configurations.setCurrentIndex(index_to_put_after)
+                        break
                 self.comboBox_configurations.blockSignals(False)
-        else:
-            index_to_remove =[]
-            for item in self.configurations:
-                self.comboBox_configurations.blockSignals(True)
-                if '(modified)' in item:
-                    item_name = item.replace('(modified)','')
-                    index_to_put_after = self.configurations.index(item_name)
-                    # printer(item_name)
-                    index_to_remove.append(self.configurations.index(item))
-                    self.comboBox_configurations.removeItem(self.configurations.index(item))
-                    self.comboBox_configurations.setCurrentIndex(index_to_put_after)
-                    break
-            self.comboBox_configurations.blockSignals(False)
-            # printer(index_to_remove)
+                # printer(index_to_remove)
+        except Exception as e:
+            printer(traceback.format_exc())
+            printer(str(e))
             
         
     def createSnapshotList(self):
-        contents = subprocess.check_output([f'ls {HOME}/.grub-editor/snapshots/'],shell=True).decode()
-        self.lines =contents.splitlines()
+        try:
+            contents = subprocess.check_output([f'ls {HOME}/.grub-editor/snapshots/'],shell=True).decode()
+            self.lines =contents.splitlines()
 
-        self.HLayouts_list=[]
-        number =0
-        clearLayout(self.VLayout_snapshot)
+            self.HLayouts_list=[]
+            number =0
+            clearLayout(self.VLayout_snapshot)
 
-        self.reconnect(self.btn_create_snapshot.clicked,self.btn_create_snapshot_callback)
-        # self.VLayout_snapshot.addWidget(self.btn_create_snapshot)
-        # printer(len(self.lines))
-        if len(self.lines) >0 and  self.lbl_no_snapshots:
-            self.lbl_no_snapshots.setText('Snapshots are backups of /etc/default/grub .Snapshots can help you when you mess up some configuration in /etc/default/grub . These snapshots are stored inside ~/.grub-editor/snapshots/')
-            # self.lbl_no_snapshots= None
-            
-        elif len(self.lines) ==0 :
-            printer('lines are zero and label wasnt found soo.. creating that lbl_nosnapshots')
-            # self.lbl_no_snapshots = QtWidgets.QLabel(self.conf_snapshots)
-            # self.lbl_no_snapshots.setWordWrap(True)
-            # self.lbl_no_snapshots.setObjectName("lbl_no_snapshots")
-            self.lbl_no_snapshots.setText('Looks like you dont have any snapshots .Snapshots are backups of /etc/default/grub .Snapshots can help you when you mess up some configuration in /etc/default/grub . These snapshots are stored inside ~/.grub-editor/snapshots/')
-            self.lbl_no_snapshots.setWordWrap(True)
-            # self.gridLayout_2.addWidget(self.lbl_no_snapshots, 1, 0, 1, 1)
-            # self.insertInto(self.gridLayout_2,1,self.lbl_no_snapshots)
-            # printer(self.gridLayout_2.itemAt(1))
-        else:
-            printer('unexpected condition in line 895 when loking for lbl_no_snapshots')
-        for line in self.lines:
-            #first number is 0
-            
-            self.HLayouts_list.append(QtWidgets.QHBoxLayout())
-            self.HLayouts_list[-1].setObjectName(f'HLayout_snapshot{number}')
-            
-            
-            #set all the buttons that appear on conf_snapshots (for a single snapshots)
-            self.lineEdit = QtWidgets.QLabel(self.conf_snapshots)
-            self.lineEdit.setObjectName(f"lbl_snapshot{number}")
-            width =self.centralWidget().geometry().width()
-
-            
-            self.snapshot_lbl_len = math.floor((width -700)/50)+self.snapshot_lbl_len_const
-                # printer (self.snapshot_lbl_len,' snapshot_lbl_len')
-                # self.createSnapshotList()
-                # for layout in self.HLayouts_list:
-                    # printer(layout.itemAt(0).widget())
-            if len(line) <self.snapshot_lbl_len:
-                self.lineEdit.setText(line)
+            self.reconnect(self.btn_create_snapshot.clicked,self.btn_create_snapshot_callback)
+            # self.VLayout_snapshot.addWidget(self.btn_create_snapshot)
+            # printer(len(self.lines))
+            if len(self.lines) >0 and  self.lbl_no_snapshots:
+                self.lbl_no_snapshots.setText('Snapshots are backups of /etc/default/grub .Snapshots can help you when you mess up some configuration in /etc/default/grub . These snapshots are stored inside ~/.grub-editor/snapshots/')
+                # self.lbl_no_snapshots= None
+                
+            elif len(self.lines) ==0 :
+                printer('lines are zero and label wasnt found soo.. creating that lbl_nosnapshots')
+                # self.lbl_no_snapshots = QtWidgets.QLabel(self.conf_snapshots)
+                # self.lbl_no_snapshots.setWordWrap(True)
+                # self.lbl_no_snapshots.setObjectName("lbl_no_snapshots")
+                self.lbl_no_snapshots.setText('Looks like you dont have any snapshots .Snapshots are backups of /etc/default/grub .Snapshots can help you when you mess up some configuration in /etc/default/grub . These snapshots are stored inside ~/.grub-editor/snapshots/')
+                self.lbl_no_snapshots.setWordWrap(True)
+                # self.gridLayout_2.addWidget(self.lbl_no_snapshots, 1, 0, 1, 1)
+                # self.insertInto(self.gridLayout_2,1,self.lbl_no_snapshots)
+                # printer(self.gridLayout_2.itemAt(1))
             else:
-                self.lineEdit.setText(line[:self.snapshot_lbl_len-3]+'...')
-            self.HLayouts_list[-1].addWidget(self.lineEdit)
-            self.pushButton_3 = QtWidgets.QPushButton(self.conf_snapshots)
-            self.pushButton_3.setObjectName(f"btn_rename{number}")
-            self.pushButton_3.setText('rename')
-            self.pushButton_3.clicked.connect(partial(self.btn_rename_callback,number))
-            self.HLayouts_list[-1].addWidget(self.pushButton_3)
-            self.pushButton = QtWidgets.QPushButton(self.conf_snapshots)
-            self.pushButton.setObjectName(f"btn_view{number}")
-            self.pushButton.setText('view')
-            self.pushButton.clicked.connect(partial(self.btn_view_callback,line))
-            self.HLayouts_list[-1].addWidget(self.pushButton)
-            self.pushButton_3 = QtWidgets.QPushButton(self.conf_snapshots)
-            self.pushButton_3.setObjectName(f"btn_delete{number}")
-            self.pushButton_3.setText('delete')
-            self.pushButton_3.clicked.connect(self.deleteCallbackCreator(line))
-            self.HLayouts_list[-1].addWidget(self.pushButton_3)
-            self.pushButton_2 = QtWidgets.QPushButton(self.conf_snapshots)
-            self.pushButton_2.setObjectName(f"btn_set{number}")
-            self.pushButton_2.setText('set')
-            self.pushButton_2.clicked.connect(partial(self.set_btn_callback,line))
-            self.HLayouts_list[-1].addWidget(self.pushButton_2)
-            
-            self.VLayout_snapshot.addLayout(self.HLayouts_list[-1])
-            
-            #first number is 0
-            
-            number +=1
+                printer('unexpected condition in line 895 when loking for lbl_no_snapshots')
+            for line in self.lines:
+                #first number is 0
+                
+                self.HLayouts_list.append(QtWidgets.QHBoxLayout())
+                self.HLayouts_list[-1].setObjectName(f'HLayout_snapshot{number}')
+                
+                
+                #set all the buttons that appear on conf_snapshots (for a single snapshots)
+                self.lineEdit = QtWidgets.QLabel(self.conf_snapshots)
+                self.lineEdit.setObjectName(f"lbl_snapshot{number}")
+                width =self.centralWidget().geometry().width()
+
+                
+                self.snapshot_lbl_len = math.floor((width -700)/50)+self.snapshot_lbl_len_const
+                    # printer (self.snapshot_lbl_len,' snapshot_lbl_len')
+                    # self.createSnapshotList()
+                    # for layout in self.HLayouts_list:
+                        # printer(layout.itemAt(0).widget())
+                if len(line) <self.snapshot_lbl_len:
+                    self.lineEdit.setText(line)
+                else:
+                    self.lineEdit.setText(line[:self.snapshot_lbl_len-3]+'...')
+                self.HLayouts_list[-1].addWidget(self.lineEdit)
+                self.pushButton_3 = QtWidgets.QPushButton(self.conf_snapshots)
+                self.pushButton_3.setObjectName(f"btn_rename{number}")
+                self.pushButton_3.setText('rename')
+                self.pushButton_3.clicked.connect(partial(self.btn_rename_callback,number))
+                self.HLayouts_list[-1].addWidget(self.pushButton_3)
+                self.pushButton = QtWidgets.QPushButton(self.conf_snapshots)
+                self.pushButton.setObjectName(f"btn_view{number}")
+                self.pushButton.setText('view')
+                self.pushButton.clicked.connect(partial(self.btn_view_callback,line))
+                self.HLayouts_list[-1].addWidget(self.pushButton)
+                self.pushButton_3 = QtWidgets.QPushButton(self.conf_snapshots)
+                self.pushButton_3.setObjectName(f"btn_delete{number}")
+                self.pushButton_3.setText('delete')
+                self.pushButton_3.clicked.connect(self.deleteCallbackCreator(line))
+                self.HLayouts_list[-1].addWidget(self.pushButton_3)
+                self.pushButton_2 = QtWidgets.QPushButton(self.conf_snapshots)
+                self.pushButton_2.setObjectName(f"btn_set{number}")
+                self.pushButton_2.setText('set')
+                self.pushButton_2.clicked.connect(partial(self.set_btn_callback,line))
+                self.HLayouts_list[-1].addWidget(self.pushButton_2)
+                
+                self.VLayout_snapshot.addLayout(self.HLayouts_list[-1])
+                
+                #first number is 0
+                
+                number +=1
+        except Exception as e:
+            printer(traceback.format_exc())
+            printer(str(e))
             
             
             
