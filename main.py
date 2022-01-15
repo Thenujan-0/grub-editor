@@ -1269,7 +1269,7 @@ class Ui(QtWidgets.QMainWindow):
 class IssuesUi(QtWidgets.QMainWindow):
     def __init__(self,issues):
         super(IssuesUi, self).__init__()
-        uic.loadUi('issues.ui',self)
+        uic.loadUi(f'{PATH}/issues.ui',self)
         qtRectangle = self.frameGeometry()
         centerPoint = QDesktopWidget().availableGeometry().center()
         qtRectangle.moveCenter(centerPoint)
@@ -1282,7 +1282,7 @@ class ViewButtonUi(QtWidgets.QDialog):
     def __init__(self,file_location):
         self.file_location = file_location
         super(ViewButtonUi, self).__init__()
-        uic.loadUi('view_snapshot.ui',self)
+        uic.loadUi(f'{PATH}/view_snapshot.ui',self)
         self.btn_on_the_application_itself.clicked.connect(self.btn_on_the_application_itself_callback)
         self.btn_default_text_editor.clicked.connect(self.btn_default_text_editor_callback)
 
@@ -1309,7 +1309,7 @@ class ViewButtonUi(QtWidgets.QDialog):
 class CreateSnapshotUi(QtWidgets.QMainWindow):
     def __init__(self):
         super(CreateSnapshotUi, self).__init__()
-        uic.loadUi('create_snapshot_dialog.ui',self)
+        uic.loadUi(f'{PATH}/create_snapshot_dialog.ui',self)
         
         #Put the window in the center of the screen
         qtRectangle = self.frameGeometry()
