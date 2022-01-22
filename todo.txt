@@ -4,3 +4,6 @@
 and then if other operating systems are there instruct the user to use 0.0 instead of 0 in timeout
 6.improve compatiblity with commented out lines in the /etc/default/grub
 improve logging so that logs can be viewed when it crashes
+
+
+possible issue : when grub-update hasnt been performed since change of an os so entries from grub.cfg are false

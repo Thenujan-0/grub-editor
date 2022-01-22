@@ -358,11 +358,27 @@ class Ui(QtWidgets.QMainWindow):
         if len(self.issues) > 0:
             self.issuesUi=IssuesUi(self.issues)
             self.issuesUi.show()
-        
+        self.ledit_grub_timeout.textChanged.connect(self.ledit_grub_timeout_callback)
         self.predefined.toggled.connect(self.radiobutton_toggle_callback)
         self.comboBox_grub_default.currentIndexChanged.connect(self.comboBox_grub_default_on_current_index_change)
         self.checkBox_boot_default_entry_after.toggled.connect(self.checkBox_boot_default_entry_after_on_toggle)
         self.checkBox_show_menu.toggled.connect(self.checkBox_show_menu_on_toggle)
+        self.btn_reset.clicked.connect(self.btn_reset_callback)
+
+
+    def ledit_grub_timeout_callback(self):
+        value =getValue('GRUB_TIMEOUT=',self.issues)
+        text = self.ledit_grub_timeout.text()
+        ledit = self.ledit_grub_timeout
+        # printer(text,value)
+        if text != value:
+            if ledit not in self.original_modifiers:
+                self.original_modifiers.append(ledit)
+        else:
+            if ledit in self.original_modifiers:
+                self.original_modifiers.remove(ledit)
+        self.handle_modify()
+
 
     def checkBox_boot_default_entry_after_on_toggle(self):
         """ on toggle handlerfor checkBox_boot_default_entry_after """
@@ -374,11 +390,9 @@ class Ui(QtWidgets.QMainWindow):
             if self.checkBox_boot_default_entry_after.isChecked():
                 if btn  in self.original_modifiers:
                     self.original_modifiers.remove(btn)
-                self.ledit_grub_timeout.setText(timeout)
             else:
                 if btn not in self.original_modifiers:
                     self.original_modifiers.append(btn)
-                self.ledit_grub_timeout.setText(timeout)
 
         elif (timeout == 'None' or timeout =='-1' ) :
             if self.checkBox_boot_default_entry_after.isChecked():
@@ -387,8 +401,23 @@ class Ui(QtWidgets.QMainWindow):
             else:
                 if btn   in self.original_modifiers:
                     self.original_modifiers.remove(btn)
-            # self.checkBox_boot_default_entry_after.setChecked(False)
+
         self.handle_modify()
+
+    def btn_reset_callback(self):
+        """ on clicked callback for reset button """
+
+        print('current index of combox configuration is',self.comboBox_configurations.currentIndex())
+
+        self.comboBox_configurations.setCurrentIndex(0)
+        # self.comboBox_configurations.setCurrentIndex(0)
+        # self.comboBox_configurations.setCurrentIndex(0)
+        print(self.comboBox_configurations.blockSignals(False))
+        print('current index of combox configuration is',self.comboBox_configurations.currentIndex())
+        print(self.original_modifiers)
+        # sleep(10)
+        # self.comboBox_configurations.setCurrentIndex(2)
+
 
     def checkBox_show_menu_on_toggle(self):
         """ on toggled handler for checkBox_show_menu """
@@ -509,8 +538,8 @@ class Ui(QtWidgets.QMainWindow):
             if '(modified)' in file_loaded:
                 self.configuration_backup=file_loaded
             # todo: do not reload the edit_configurations ui if ui part was modified by user
+            # we will think about working on it 🤔
         except AttributeError:
-
             pass
 
         finally:
@@ -781,7 +810,6 @@ class Ui(QtWidgets.QMainWindow):
         btn=self.sender()
         if btn.text()=='Show Details':
             
-            # todo
             self.scrollArea = QtWidgets.QScrollArea()
             self.scrollArea.setWidgetResizable(True)
             self.scrollArea.setObjectName("scrollArea")
@@ -792,7 +820,6 @@ class Ui(QtWidgets.QMainWindow):
             self.gridLayout_3.setObjectName("gridLayout_3")
             self.lbl_details = QtWidgets.QLabel(self.scrollAreaWidgetContents)
             
-            #! todo here
             
             self.lbl_details.setWordWrap(True)
             self.lbl_details.setObjectName("lbl_details")
@@ -932,7 +959,6 @@ class Ui(QtWidgets.QMainWindow):
         try:
             start = perf_counter()
             printer(f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
-            #! todo here
 
             
             self.setUiElements()
@@ -1177,7 +1203,7 @@ class Ui(QtWidgets.QMainWindow):
         
         """ handles when the loaded configuration is modified in the apps . 
         it changes the loaded configuration from combo box value""" 
-
+        print('handle_modify: start',self.original_modifiers)
         try:
             if len(self.original_modifiers)>0:
                 current_item = self.configurations[self.comboBox_configurations.currentIndex()]
@@ -1191,8 +1217,9 @@ class Ui(QtWidgets.QMainWindow):
                     self.comboBox_configurations.blockSignals(False)
             else:
                 index_to_remove =[]
+                self.comboBox_configurations.blockSignals(True)
                 for item in self.configurations:
-                    self.comboBox_configurations.blockSignals(True)
+                    
                     if '(modified)' in item:
                         item_name = item.replace('(modified)','')
                         index_to_put_after = self.configurations.index(item_name)
@@ -1206,7 +1233,8 @@ class Ui(QtWidgets.QMainWindow):
         except Exception as e:
             printer(traceback.format_exc())
             printer(str(e))
-            
+        
+        print('handle_modify: end',self.original_modifiers)
         
     def createSnapshotList(self):
         try:
@@ -1354,8 +1382,7 @@ class SetRecommendations(QtWidgets.QMainWindow):
         qtRectangle.moveCenter(centerPoint)
         self.move(qtRectangle.topLeft())
         self.fixes_list =fixes_list
-        # self.HLayouts=[]
-        # todo : for every element in list it should iterate thorugh them and create layout 
+        
         for i in range(len(recommendations_list)):
             recommendation =recommendations_list[i]
             self.horizontalLayout = QtWidgets.QHBoxLayout()
@@ -1407,7 +1434,6 @@ class SetRecommendations(QtWidgets.QMainWindow):
                 window.set_recommendations_window.close()
                 window.btn_set_callback()       
      
-            # todo : check if vertical
             
         return btn_fix_callback
 

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>700</width>
-    <height>505</height>
+    <width>727</width>
+    <height>595</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -27,7 +27,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="edit_configurations">
        <attribute name="title">
@@ -71,53 +71,10 @@
              <number>0</number>
             </property>
             <item row="3" column="0">
-             <widget class="QPushButton" name="btn_set">
+             <widget class="QCheckBox" name="checkBox_look_for_other_os">
               <property name="text">
-               <string>set</string>
+               <string>Look for other operating systems</string>
               </property>
-             </widget>
-            </item>
-            <item row="0" column="0">
-             <widget class="QGroupBox" name="groupBox_2">
-              <property name="title">
-               <string>Default entry</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_6">
-               <item row="0" column="0">
-                <layout class="QHBoxLayout" name="horizontalLayout_3">
-                 <property name="leftMargin">
-                  <number>0</number>
-                 </property>
-                 <property name="bottomMargin">
-                  <number>10</number>
-                 </property>
-                 <item>
-                  <widget class="QRadioButton" name="predefined">
-                   <property name="text">
-                    <string>predefined:</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QComboBox" name="comboBox_grub_default">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                     <horstretch>1</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="1" column="0">
-                <widget class="QRadioButton" name="previously_booted_entry">
-                 <property name="text">
-                  <string>previously booted entry</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
              </widget>
             </item>
             <item row="2" column="0">
@@ -254,6 +211,70 @@
               </layout>
              </widget>
             </item>
+            <item row="0" column="0">
+             <widget class="QGroupBox" name="groupBox_2">
+              <property name="title">
+               <string>Default entry</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_6">
+               <item row="0" column="0">
+                <layout class="QHBoxLayout" name="horizontalLayout_3">
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>10</number>
+                 </property>
+                 <item>
+                  <widget class="QRadioButton" name="predefined">
+                   <property name="text">
+                    <string>predefined:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QComboBox" name="comboBox_grub_default">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                     <horstretch>1</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="1" column="0">
+                <widget class="QRadioButton" name="previously_booted_entry">
+                 <property name="text">
+                  <string>previously booted entry</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="5" column="0">
+             <layout class="QHBoxLayout" name="horizontalLayout_9">
+              <property name="bottomMargin">
+               <number>15</number>
+              </property>
+              <item>
+               <widget class="QPushButton" name="btn_reset">
+                <property name="text">
+                 <string>Reset</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="btn_set">
+                <property name="text">
+                 <string>set</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
            </layout>
           </item>
          </layout>
@@ -298,8 +319,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>656</width>
-             <height>279</height>
+             <width>683</width>
+             <height>369</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_8">
@@ -326,19 +347,106 @@
        <layout class="QGridLayout" name="gridLayout_7">
         <item row="0" column="0">
          <layout class="QVBoxLayout" name="VLyout_chroot">
+          <property name="spacing">
+           <number>40</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
           <item>
-           <widget class="QLabel" name="label_3">
-            <property name="font">
-             <font>
-              <pointsize>20</pointsize>
-             </font>
+           <layout class="QHBoxLayout" name="horizontalLayout_11">
+            <item>
+             <widget class="QLabel" name="label_3">
+              <property name="text">
+               <string>Chroot is accessing another operating system from this operating system.Grub-editor uses manjaro-chroot to chroot</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBox_3">
+            <property name="title">
+             <string>Select operating system to chroot into</string>
             </property>
-            <property name="text">
-             <string>Under construction</string>
+            <layout class="QGridLayout" name="gridLayout_9">
+             <item row="0" column="0">
+              <layout class="QHBoxLayout" name="horizontalLayout_10">
+               <item>
+                <widget class="QPushButton" name="btn_chroot_into">
+                 <property name="text">
+                  <string>Chroot into</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QComboBox" name="comboBox_chroot_into">
+                 <item>
+                  <property name="text">
+                   <string>Ubuntu 21.10 on /dev/sda1</string>
+                  </property>
+                 </item>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_8">
+            <item>
+             <widget class="QPushButton" name="pushButton_2">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Reinstall grub package</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButton_3">
+              <property name="text">
+               <string>Update grub configuration</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBox_4">
+            <property name="title">
+             <string>Install grub to device</string>
             </property>
-            <property name="alignment">
-             <set>Qt::AlignCenter</set>
-            </property>
+            <layout class="QGridLayout" name="gridLayout_10">
+             <item row="0" column="0">
+              <layout class="QHBoxLayout" name="horizontalLayout_12">
+               <property name="bottomMargin">
+                <number>0</number>
+               </property>
+               <item>
+                <widget class="QPushButton" name="pushButton">
+                 <property name="text">
+                  <string>Intall grub to</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QComboBox" name="comboBox_2">
+                 <item>
+                  <property name="text">
+                   <string>/dev/sda 85GB free out of 100GB</string>
+                  </property>
+                 </item>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
            </widget>
           </item>
          </layout>
@@ -354,7 +462,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>700</width>
+     <width>727</width>
      <height>30</height>
     </rect>
    </property>
