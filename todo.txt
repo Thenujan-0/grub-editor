@@ -1,9 +1,17 @@
 
-2.check if the current grub.cfg is up to date with /etc/default/grub
-3.check if other operating systems are there by executing os prober and if it takes too long then use grub.cfg to find out
+check if the current grub.cfg is up to date with /etc/default/grub
+check if other operating systems are there by executing os prober and if it takes too long then use grub.cfg to find out
 and then if other operating systems are there instruct the user to use 0.0 instead of 0 in timeout
-6.improve compatiblity with commented out lines in the /etc/default/grub
-improve logging so that logs can be viewed when it crashes
+
+ check if snapshot contains grub default that is not in grub.cfg
+
+ remove the invalid entry from the comboBox once the the user has changed the /etc/default/grub through the application
+
+
+
 
 
 possible issue : when grub-update hasnt been performed since change of an os so entries from grub.cfg are false
+
+check what happens when a dual boot os removed from hard drive but selected as default entry in grub
+

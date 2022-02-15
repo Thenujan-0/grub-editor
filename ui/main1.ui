@@ -27,7 +27,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="edit_configurations">
        <attribute name="title">
@@ -370,76 +370,16 @@
           <item>
            <widget class="QGroupBox" name="groupBox_3">
             <property name="title">
-             <string>Select operating system to chroot into</string>
+             <string>Select an operating system to chroot into</string>
             </property>
             <layout class="QGridLayout" name="gridLayout_9">
-             <item row="0" column="0">
-              <layout class="QHBoxLayout" name="horizontalLayout_10">
+             <item row="1" column="0">
+              <layout class="QVBoxLayout" name="verticalLayout_3">
                <item>
-                <widget class="QPushButton" name="btn_chroot_into">
-                 <property name="text">
-                  <string>Chroot into</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QComboBox" name="comboBox_chroot_into">
+                <widget class="QListWidget" name="listWidget">
                  <item>
                   <property name="text">
-                   <string>Ubuntu 21.10 on /dev/sda1</string>
-                  </property>
-                 </item>
-                </widget>
-               </item>
-              </layout>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_8">
-            <item>
-             <widget class="QPushButton" name="pushButton_2">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="text">
-               <string>Reinstall grub package</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="pushButton_3">
-              <property name="text">
-               <string>Update grub configuration</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <widget class="QGroupBox" name="groupBox_4">
-            <property name="title">
-             <string>Install grub to device</string>
-            </property>
-            <layout class="QGridLayout" name="gridLayout_10">
-             <item row="0" column="0">
-              <layout class="QHBoxLayout" name="horizontalLayout_12">
-               <property name="bottomMargin">
-                <number>0</number>
-               </property>
-               <item>
-                <widget class="QPushButton" name="pushButton">
-                 <property name="text">
-                  <string>Intall grub to</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QComboBox" name="comboBox_2">
-                 <item>
-                  <property name="text">
-                   <string>/dev/sda 85GB free out of 100GB</string>
+                   <string>Garuda on /dev/sda2  btrfs</string>
                   </property>
                  </item>
                 </widget>

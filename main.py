@@ -62,13 +62,13 @@ subprocess.Popen([f'touch {HOME}/.grub-editor/logs/main.log'],shell=True)
 logging.basicConfig(filename=f'{HOME}/.grub-editor/logs/main.log',format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 def check_dual_boot():
-    out = subprocess.check_output(['os-prober'],shell=True).decode()
+    out = subprocess.check_output(['pkexec os-prober'],shell=True).decode()
 
 
-def getValue(name,issues):
+def getValue(name,issues,read_file=file_loc):
     """arguments are  the string to look for 
     and the list to append issues to"""
-    with open(file_loc) as file:
+    with open(read_file) as file:
         data =file.read()
         start_index =data.find(name)
         end_index =data[start_index+len(name):].find('\n')+start_index+len(name)
@@ -294,7 +294,7 @@ class Ui(QtWidgets.QMainWindow):
     def __init__(self):
         super(Ui, self).__init__()
         self.threadpool= QtCore.QThreadPool()
-        uic.loadUi(f'{PATH}/main1.ui',self)
+        uic.loadUi(f'{PATH}/ui/main1.ui',self)
         self.show()
 
         #make sure window is in center of the screen
@@ -304,9 +304,11 @@ class Ui(QtWidgets.QMainWindow):
         self.move(qtRectangle.topLeft())
 
 
-        #possible windows
+        #possible windows that will be created later 
+
+        #a window to show suggestios regarding grub configuration
         self.set_recommendations_window=None
-        
+        self.dialog_invalid_default_entry=None
 
         #handle resize event it is used to define the maximum length of snapshot labels
         self.resized.connect(self.someFunction)
@@ -322,10 +324,11 @@ class Ui(QtWidgets.QMainWindow):
         self.scrollAreaWidgetContents.adjustSize()
         self.VLayout_snapshot_parent.addStretch()
         
-        #load the entries
+        #load the entries for available operating systems
         import find_entries
         self.main_entries = find_entries.main_entries
 
+        #add all the available operating systems to comboBox_grub_default and self.all_entries
         self.all_entries =[]
         for entry in self.main_entries:
             if len(entry.sub_entries) ==0:
@@ -335,7 +338,6 @@ class Ui(QtWidgets.QMainWindow):
                 for sub in entry.sub_entries:
                     self.comboBox_grub_default.addItem(sub.parent.title+' >'+sub.title)
                     self.all_entries.append(sub.parent.title+' >'+sub.title)
-        # print(self.all_entries)
         
         
         #label that shows saving or saved sucessfully
@@ -364,6 +366,17 @@ class Ui(QtWidgets.QMainWindow):
         self.checkBox_boot_default_entry_after.toggled.connect(self.checkBox_boot_default_entry_after_on_toggle)
         self.checkBox_show_menu.toggled.connect(self.checkBox_show_menu_on_toggle)
         self.btn_reset.clicked.connect(self.btn_reset_callback)
+        self.tabWidget.currentChanged.connect(self.tabWidget_currentChanged_callback)
+        self.checkBox_look_for_other_os.clicked.connect(self.checkBox_look_for_other_os_callback)
+
+    def tabWidget_currentChanged_callback(self,index):
+        # print('index of tab is ',index)
+        if index==2:
+            def check_os_prober():
+                pass
+                out = subprocess.check_output(['pkexec os-prober'],shell=True).decode()
+                print(out)
+            #! todo here use worker to checkthe output and then send a signal once it finishes it
 
 
     def ledit_grub_timeout_callback(self):
@@ -501,7 +514,21 @@ class Ui(QtWidgets.QMainWindow):
             grub_default_val= grub_default_val[1:]
         if grub_default_val[-1]=='"':
             grub_default_val=grub_default_val[:-1]
-            
+
+
+        print('checking for invalid entry')
+        #check if an invalid configuration exists
+        if "(INVALID)" in self.all_entries[-1]:
+            print("removing invalid entry")
+            #todo check if this part is needed in code
+            grub_invalid_val = self.all_entries[-1].replace('(INVALID)',"")
+            if grub_invalid_val != grub_default_val:
+                self.all_entries.pop(-1)
+                self.comboBox_grub_default.removeItem(len(self.all_entries))
+
+        else:
+            print('no invalid entry found')
+            print('last entry is ',self.all_entries[-1])
         
         if grub_default_val=='saved':
             self.previously_booted_entry.setChecked(True)
@@ -513,7 +540,24 @@ class Ui(QtWidgets.QMainWindow):
             self.predefined.setChecked(True)
             # printer(self.all_entries)
             grub_default_val=grub_default_val.replace('>',' >')
-            self.comboBox_grub_default.setCurrentIndex(self.all_entries.index(grub_default_val))    
+            try:
+                self.comboBox_grub_default.setCurrentIndex(self.all_entries.index(grub_default_val))    
+            except ValueError:
+                self.dialog_invalid_default_entry=DialogUi(btn_cancel=False)
+                self.dialog_invalid_default_entry.label.setText("/etc/grub/default currently has an invalid default entry")
+                self.dialog_invalid_default_entry.show()
+
+                #add the invalid entry to the combo box
+                invalid_value=getValue('GRUB_DEFAULT=',self.issues)
+                if invalid_value[0]=='"':
+                    invalid_value= invalid_value[1:]
+                if invalid_value[-1]=='"':
+                    invalid_value=invalid_value[:-1]
+
+                self.comboBox_grub_default.addItem(invalid_value+" (INVALID)")
+                self.all_entries.append(invalid_value+("invalid"))
+                print(self.all_entries[-1],'last item is')
+                self.comboBox_grub_default.setCurrentIndex(len(self.all_entries)-1)
 
     def get_comboBox_grub_default(self):
         """returns the value comboBox grub_default should have"""
@@ -534,7 +578,7 @@ class Ui(QtWidgets.QMainWindow):
             #catch error that might occur when self.configurations is not initialized
             index =self.comboBox_configurations.currentIndex()
             file_loaded = self.configurations[index]
-            printer('loaded file is',file_loaded)
+            # printer('loaded file is',file_loaded)
             if '(modified)' in file_loaded:
                 self.configuration_backup=file_loaded
             # todo: do not reload the edit_configurations ui if ui part was modified by user
@@ -575,7 +619,7 @@ class Ui(QtWidgets.QMainWindow):
                 # printer(self.comboBox_configurations.itemData(123))
             
             global file_loc
-            printer('file_loc is now',file_loc)
+            # printer('file_loc is now',file_loc)
             if file_loc=='/etc/default/grub':
                 self.comboBox_configurations.setCurrentIndex(0)
             elif '/snapshots/' in file_loc:
@@ -602,6 +646,16 @@ class Ui(QtWidgets.QMainWindow):
                 self.checkBox_boot_default_entry_after.setChecked(True)
                 
             self.createSnapshotList()
+
+
+            #set the value of checkBox_look_for_other_os
+            value = getValue('GRUB_DISABLE_OS_PROBER=',self.issues)
+            if value=="false":
+                self.checkBox_look_for_other_os.setChecked(True)
+            elif value=="true":
+                self.checkBox_look_for_other_os.setChecked(False)
+            else:
+                printer("Unknown value for GRUB_DISABLE_OS_PROBER")
         
         
     def set_lbl_details(self):
@@ -618,8 +672,13 @@ class Ui(QtWidgets.QMainWindow):
         """ saves the configurations that are in GUI to cache ~/.grub-editor/temp.txt  """
         self.lbl_details_text=''
         
+        # clear the file in cache
+        subprocess.run([f'rm {HOME}/.cache/grub-editor/temp.txt'],shell=True)
+        subprocess.run([f'touch {HOME}/.cache/grub-editor/temp.txt'],shell=True)
+
         index =self.comboBox_configurations.currentIndex()
-        if index ==0:
+        total=len(self.configurations)
+        if index ==0 or (index==total-1 and "(modified)" in self.configurations[-1]):
             target_file_copy = '/etc/default/grub'
         else:
             target_file_copy =f'{HOME}/.grub-editor/snapshots/'+self.configurations[index]
@@ -631,9 +690,9 @@ class Ui(QtWidgets.QMainWindow):
         else:
             setValue('GRUB_TIMEOUT_STYLE=','hidden')
         
-        printer('save condfs to cache was called')
+        # printer('save condfs to cache was called')
         if self.predefined.isChecked():
-            printer('predefined is checked')
+            # printer('predefined is checked')
             self.grub_default =str(self.comboBox_grub_default.currentText())
 
             if self.grub_default.count('>') <=1:
@@ -643,37 +702,47 @@ class Ui(QtWidgets.QMainWindow):
                     last_part=self.grub_default[self.grub_default.find('>'):]
                     to_write='"'+front_part+last_part+'"'
                     setValue('GRUB_DEFAULT=',to_write)
-                    printer('called:''GRUB_DEFAULT=',to_write)
+                    # printer('called:''GRUB_DEFAULT=',to_write)
                     # printer(to_write+'part to be written')
                 else:
                     setValue('GRUB_DEFAULT=','\"'+self.grub_default+'\"')
-                    printer('called:''GRUB_DEFAULT='+'\"'+self.grub_default+'\"')
-                    printer('woke from 20 sec sleep')
+                    # printer('called:''GRUB_DEFAULT='+'\"'+self.grub_default+'\"')
+                    # printer('woke from 20 sec sleep')
                 #set the value of grub_default
             else:
                 printer('Error occured when setting grub default as combobox text has more than one  1\' >\'  ')
                 self.lbl_status.setText('Error occured when setting grub default as combobox text has more than one  1\' >\'  ')
                 printer(self.grub_default)
         elif self.previously_booted_entry.isChecked():
-            printer('i\'m not Supposed to be printed')
+            # printer('i\'m not Supposed to be printed')
             setValue('GRUB_DEFAULT=','saved')
 
         if self.checkBox_boot_default_entry_after.isChecked():
             setValue('GRUB_TIMEOUT=',self.ledit_grub_timeout.text())
-            printer('setting grub-timeout')
+            # printer('setting grub-timeout')
 
         else:
             setValue('GRUB_TIMEOUT=','-1')
-            printer('setting grub-timeout -1')
+            # printer('setting grub-timeout -1')
+
+        #look for other os
+        if self.checkBox_look_for_other_os.isChecked():
+            setValue("GRUB_DISABLE_OS_PROBER=","false")
+        else:
+            setValue("GRUB_DISABLE_OS_PROBER","true")
 
     def saveConfs(self):
         """ copies the configuration file from cache to the target(/etc/default/grub) """
         self.saveConfsToCache()
+
         def final(self):
             try:
                 
-                
-                process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && cp -f  "{HOME}/.cache/grub-editor/temp.txt"  '+write_file +' && sudo update-grub 2>&1 \'  '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
+                process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && \
+                        cp -f  "{HOME}/.cache/grub-editor/temp.txt"  '+write_file +' && sudo update-grub 2>&1 \'  '],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    shell=True)
                 self.lbl_details_text='Waiting for authentication \n'
                 
                 self.set_lbl_details()
@@ -730,13 +799,37 @@ class Ui(QtWidgets.QMainWindow):
                 printer(traceback.format_exc())
                 self.lbl_status.setText('An error occured when saving')
                 self.lbl_status.setStyleSheet('color: red')
-        threading.Thread(target=final,args=[self]).start()
+        # threading.Thread(target=final,args=[self]).start()
+        self.startWorker(final,self.setUiElements,None,self)
 
+    def checkBox_look_for_other_os_callback(self):
+        """ callback handler for checkBox_look_for_other_os
+            reacts to modifications
+        """
+        value=getValue("GRUB_DISABLE_OS_PROBER=",self.issues)
+        cbox=self.checkBox_look_for_other_os
+
+        #check if cbox is showing right value
+        if (value=="true" and not cbox.isChecked() or value=="false" and cbox.isChecked()) \
+            and cbox in self.original_modifiers:
+            
+            
+                self.original_modifiers.remove(cbox)
+        # check if cbox is showing false value 
+        elif ( (value=="true" and  cbox.isChecked()) or (value=="false" and not cbox.isChecked()) ) \
+            and cbox not in self.original_modifiers:
+            self.original_modifiers.append(cbox)
+        else:
+            printer("unknown case in checkbox_look_for_other_os_callback"+"\n"+
+                            "value of checkBox.isChecked is "+str(cbox.isChecked())+"\n"+
+                            "value of GRUB_DISABLE_OS_PROBER= is "+str(value))
+
+        self.handle_modify()
         
         
     def btn_create_snapshot_callback(self):
         preference= get_preference("create_snapshot")
-        printer(preference)
+        # printer(preference)
         if preference=="None" and len(self.original_modifiers)>0:
             self.create_snapshot_dialog = CreateSnapshotUi()
             self.create_snapshot_dialog.btn_ignore_changes.clicked.connect(self.btn_ignore_changes_callback)
@@ -744,7 +837,7 @@ class Ui(QtWidgets.QMainWindow):
             self.create_snapshot_dialog.show() 
         elif preference=='add_changes_to_snapshot':
             self.saveConfsToCache()
-            printer('saving from cache')
+            # printer('saving from cache')
             self.createSnapshot(from_cache=True)
         elif preference=='ignore_changes' or preference =='None':
             #preference is == None here means that nothing was modified in UI and preference file is fresh
@@ -786,7 +879,7 @@ class Ui(QtWidgets.QMainWindow):
             with open(f'{HOME}/.grub-editor/snapshots/{date_time}','w') as file:
                 file.write(data)
         else:
-            printer('created a snapshot grom cache')
+            # printer('created a snapshot grom cache')
             subprocess.run([f'cp {HOME}/.cache/grub-editor/temp.txt {HOME}/.grub-editor/snapshots/{date_time}'],shell=True)
         self.setUiElements()
 
@@ -850,6 +943,8 @@ class Ui(QtWidgets.QMainWindow):
 
         """ if argument is true then it checks configurations for recommendations and errors """
 
+
+
         self.recommendations=[]
         self.recmds_fixes=[]
         grub_timeout_value=self.ledit_grub_timeout.text()
@@ -912,7 +1007,7 @@ class Ui(QtWidgets.QMainWindow):
             self.lbl_status.setStyleSheet('color:#03fc6f;')
         
         
-        printer(interrupt,'interrupt')
+        # printer(interrupt,'interrupt')
         if not unsafe:
             if not interrupt and len(self.recommendations)==0:
                 self.saveConfs()
@@ -927,7 +1022,7 @@ class Ui(QtWidgets.QMainWindow):
     def btn_show_orginal_callback(self):
         global file_loc
         file_loc='/etc/default/grub'
-        printer(self.sender().parent().deleteLater())
+        self.sender().parent().deleteLater()
         self.setUiElements()
 
             
@@ -955,56 +1050,86 @@ class Ui(QtWidgets.QMainWindow):
             printer(traceback.format_exc())
             printer("An error occured in btn_View_callback")
                 
-    def set_btn_callback(self,line):
+    def btn_set_snapshot(self,line):
+        """ callback back function for set snapshot button """
+
         try:
-            start = perf_counter()
-            printer(f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
+
+            # all the code that has to be executed to set the snapshot are inside this function
+            def set_snapshot():
+                self.setUiElements()
+                
+                if not (self.verticalLayout_2.itemAt(1) and isinstance(self.verticalLayout_2.itemAt(1),QtWidgets.QHBoxLayout)) and \
+                    not (self.verticalLayout_2.itemAt(2) and isinstance(self.verticalLayout_2.itemAt(2),QtWidgets.QHBoxLayout)):
+                    #create a label to show user that saving
+                    self.lbl_status= QtWidgets.QLabel(self.edit_configurations)
+                    self.lbl_status.setText('waiting for authentication')
+                    self.lbl_status.setStyleSheet('color:#03fc6f;')
+                    
+                    
+                    
+                    # self.verticalLayout.addWidget(self.lbl_status)
+                    
+                    # create a button (show details)
+                    self.btn_show_details= QtWidgets.QPushButton(self.edit_configurations)
+                    self.btn_show_details.setText('Show Details')
+                    self.btn_show_details.clicked.connect(partial(self.btn_show_details_callback,'conf_snapshots'))
+                    
+                    #create a horizontal layout
+                    self.HLayout_save= QtWidgets.QHBoxLayout()
+                    self.HLayout_save.setObjectName('HLayout_save')
+                    self.HLayout_save.addWidget(self.lbl_status)
+                    self.HLayout_save.addWidget(self.btn_show_details)
+                    self.verticalLayout_2.addLayout(self.HLayout_save)
+                #printer(end-start)
+                else:
+                    self.lbl_status.setText('waiting for authentication')
+                    
+                self.startWorker(self.final,self.setUiElements,None,line)
+                if self.dialog_invalid_default_entry :
+                    self.dialog_invalid_default_entry.close()
+
+
+            #check if snapshot's default os is a valid one 
+            default=getValue("GRUB_DEFAULT=",self.issues,f"{HOME}/.grub-editor/snapshots/{line}")
+
+            if default not in self.all_entries:
+                printer("Value of default in snapshot is not a valid os")
+                self.dialog_invalid_snapshot=DialogUi(btn_cancel=True)
+                self.dialog_invalid_snapshot.label.setText("The snapshot you have selected has an invalid value for grub default")
+                self.dialog_invalid_snapshot.btn_ok.setText('continue anyway')
+                self.dialog_invalid_snapshot.show()
+                self.dialog_invalid_snapshot.btn_ok.clicked.connect(set_snapshot)
+
+
+
+            # printer(f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
 
             
-            self.setUiElements()
-            end=perf_counter()
-            
-            if not (self.verticalLayout_2.itemAt(1) and isinstance(self.verticalLayout_2.itemAt(1),QtWidgets.QHBoxLayout)) and \
-                not (self.verticalLayout_2.itemAt(2) and isinstance(self.verticalLayout_2.itemAt(2),QtWidgets.QHBoxLayout)):
-                #create a label to show user that saving
-                self.lbl_status= QtWidgets.QLabel(self.edit_configurations)
-                self.lbl_status.setText('waiting for authentication')
-                self.lbl_status.setStyleSheet('color:#03fc6f;')
-                
-                
-                
-                # self.verticalLayout.addWidget(self.lbl_status)
-                
-                # create a button (show details)
-                self.btn_show_details= QtWidgets.QPushButton(self.edit_configurations)
-                self.btn_show_details.setText('Show Details')
-                self.btn_show_details.clicked.connect(partial(self.btn_show_details_callback,'conf_snapshots'))
-                
-                #create a horizontal layout
-                self.HLayout_save= QtWidgets.QHBoxLayout()
-                self.HLayout_save.setObjectName('HLayout_save')
-                self.HLayout_save.addWidget(self.lbl_status)
-                self.HLayout_save.addWidget(self.btn_show_details)
-                self.verticalLayout_2.addLayout(self.HLayout_save)
-            #printer(end-start)
-            else:
-                self.lbl_status.setText('waiting for authentication')
-                
-            self.startWorker(line)
         except Exception as e:
             printer(traceback.format_exc())
             printer(str(e))
-            printer('Error occured in set_btn_callback')
-    def startWorker(self,line):
-        worker = Worker(self.final,line)
-        worker.signals.finished.connect(self.setUiElements)
-        self.threadpool.start(worker)
-        
+            printer('Error occured in btn_set_snapshot')
+
+
+    def startWorker(self,toCall,onFinish,onResult,*args):
+        try:
+            """ arguments are funtion to run , funtion to call when finishes ,function to call with result if no errors occured, arugments of the first funtion """
+            worker = Worker(toCall,*args)
+            if onFinish is not None:
+                worker.signals.finished.connect(onFinish)
+            if onResult is not None:
+                worker.signals.result.connect(onResult)
+            self.threadpool.start(worker)
+        except Exception as e:
+            printer(traceback.format_exc())
+            printer(str(e))
         
     def final(self,line):
         try:
-            
-            process = subprocess.Popen([f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file}&& sudo update-grub  \' '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
+            # print('executing the command')
+            # print(f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
+            process = subprocess.Popen([f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file} && sudo update-grub  \' '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
             self.lbl_details_text='Waiting for authentication \n'
             
             self.set_lbl_details()
@@ -1017,7 +1142,7 @@ class Ui(QtWidgets.QMainWindow):
             #     self.lbl_details.setText(out)
             # self.lbl_status.setText('Saved successfully')
             while True:
-                printer('running')
+                # printer('running')
                 authentication_complete=False
                 for line in process.stdout:
                     if not authentication_complete:
@@ -1203,7 +1328,7 @@ class Ui(QtWidgets.QMainWindow):
         
         """ handles when the loaded configuration is modified in the apps . 
         it changes the loaded configuration from combo box value""" 
-        print('handle_modify: start',self.original_modifiers)
+        # print('handle_modify: start',self.original_modifiers)
         try:
             if len(self.original_modifiers)>0:
                 current_item = self.configurations[self.comboBox_configurations.currentIndex()]
@@ -1234,7 +1359,7 @@ class Ui(QtWidgets.QMainWindow):
             printer(traceback.format_exc())
             printer(str(e))
         
-        print('handle_modify: end',self.original_modifiers)
+        # print('handle_modify: end',self.original_modifiers)
         
     def createSnapshotList(self):
         try:
@@ -1305,7 +1430,7 @@ class Ui(QtWidgets.QMainWindow):
                 self.pushButton_2 = QtWidgets.QPushButton(self.conf_snapshots)
                 self.pushButton_2.setObjectName(f"btn_set{number}")
                 self.pushButton_2.setText('set')
-                self.pushButton_2.clicked.connect(partial(self.set_btn_callback,line))
+                self.pushButton_2.clicked.connect(partial(self.btn_set_snapshot,line))
                 self.HLayouts_list[-1].addWidget(self.pushButton_2)
                 
                 self.VLayout_snapshot.addLayout(self.HLayouts_list[-1])
@@ -1322,7 +1447,7 @@ class Ui(QtWidgets.QMainWindow):
 class IssuesUi(QtWidgets.QMainWindow):
     def __init__(self,issues):
         super(IssuesUi, self).__init__()
-        uic.loadUi(f'{PATH}/issues.ui',self)
+        uic.loadUi(f'{PATH}/ui/issues.ui',self)
         qtRectangle = self.frameGeometry()
         centerPoint = QDesktopWidget().availableGeometry().center()
         qtRectangle.moveCenter(centerPoint)
@@ -1335,7 +1460,7 @@ class ViewButtonUi(QtWidgets.QDialog):
     def __init__(self,file_location):
         self.file_location = file_location
         super(ViewButtonUi, self).__init__()
-        uic.loadUi(f'{PATH}/view_snapshot.ui',self)
+        uic.loadUi(f'{PATH}/ui/view_snapshot.ui',self)
         self.btn_on_the_application_itself.clicked.connect(self.btn_on_the_application_itself_callback)
         self.btn_default_text_editor.clicked.connect(self.btn_default_text_editor_callback)
 
@@ -1362,7 +1487,7 @@ class ViewButtonUi(QtWidgets.QDialog):
 class CreateSnapshotUi(QtWidgets.QMainWindow):
     def __init__(self):
         super(CreateSnapshotUi, self).__init__()
-        uic.loadUi(f'{PATH}/create_snapshot_dialog.ui',self)
+        uic.loadUi(f'{PATH}/ui/create_snapshot_dialog.ui',self)
         
         #Put the window in the center of the screen
         qtRectangle = self.frameGeometry()
@@ -1374,7 +1499,7 @@ class CreateSnapshotUi(QtWidgets.QMainWindow):
 class SetRecommendations(QtWidgets.QMainWindow):
     def __init__(self,recommendations_list,fixes_list):
         super(SetRecommendations,self).__init__()
-        uic.loadUi(f'{PATH}/set_recommendations.ui',self)
+        uic.loadUi(f'{PATH}/ui/set_recommendations.ui',self)
 
         #Put the window in the center of the screen
         qtRectangle = self.frameGeometry()
@@ -1441,6 +1566,26 @@ class SetRecommendations(QtWidgets.QMainWindow):
         def btn_ignore_callback(self):
             clearLayout(HLayout)
         return btn_fix_callback
+
+
+
+class DialogUi(QtWidgets.QDialog):
+    def __init__(self,btn_cancel=True):
+        super(DialogUi,self).__init__()
+        # print(PATH)
+        uic.loadUi(f'{PATH}/ui/dialog.ui',self)
+        if not btn_cancel:
+            self.horizontalLayout.takeAt(0).widget().deleteLater()
+        else:
+            self.btn_cancel.clicked.connect(self.btn_cancel_callback)
+        self.btn_ok.clicked.connect(self.btn_ok_callback)
+
+    def btn_ok_callback(self):
+        self.close()
+    
+    def btn_cancel_callback(self):
+        self.close()
+
 
 app =QtWidgets.QApplication(sys.argv)
 window=Ui()
