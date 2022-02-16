@@ -68,6 +68,12 @@ def check_dual_boot():
 def getValue(name,issues,read_file=file_loc):
     """arguments are  the string to look for 
     and the list to append issues to"""
+
+    #check if last character is = to avoid possible bugs
+
+    if name[-1] != '=':
+        raise Exception("name passed for getvalue doesnt contain = as last character")
+
     with open(read_file) as file:
         data =file.read()
         start_index =data.find(name)
@@ -107,6 +113,8 @@ def setValue(name,val):
     """ writes the changes to ~/.cache/grub-editor/temp.txt call initialize_temp_file before start writing to temp.txt"""
     target_file=f'{HOME}/.cache/grub-editor/temp.txt'
 
+    if name[-1] != '=':
+        raise Exception("name passed for getvalue doesnt contain = as last character")
     
     with open(target_file,'r') as file:
         printer('file_loc',file_loc)
@@ -295,13 +303,14 @@ class Ui(QtWidgets.QMainWindow):
         super(Ui, self).__init__()
         self.threadpool= QtCore.QThreadPool()
         uic.loadUi(f'{PATH}/ui/main1.ui',self)
-        self.show()
 
         #make sure window is in center of the screen
         qtRectangle = self.frameGeometry()
         centerPoint = QDesktopWidget().availableGeometry().center()
         qtRectangle.moveCenter(centerPoint)
         self.move(qtRectangle.topLeft())
+
+        self.show()
 
 
         #possible windows that will be created later 
@@ -368,6 +377,7 @@ class Ui(QtWidgets.QMainWindow):
         self.btn_reset.clicked.connect(self.btn_reset_callback)
         self.tabWidget.currentChanged.connect(self.tabWidget_currentChanged_callback)
         self.checkBox_look_for_other_os.clicked.connect(self.checkBox_look_for_other_os_callback)
+
 
     def tabWidget_currentChanged_callback(self,index):
         # print('index of tab is ',index)
@@ -555,7 +565,7 @@ class Ui(QtWidgets.QMainWindow):
                     invalid_value=invalid_value[:-1]
 
                 self.comboBox_grub_default.addItem(invalid_value+" (INVALID)")
-                self.all_entries.append(invalid_value+("invalid"))
+                self.all_entries.append(invalid_value+"(INVALID)")
                 print(self.all_entries[-1],'last item is')
                 self.comboBox_grub_default.setCurrentIndex(len(self.all_entries)-1)
 
@@ -943,7 +953,7 @@ class Ui(QtWidgets.QMainWindow):
 
         """ if argument is true then it checks configurations for recommendations and errors """
 
-
+        #todo check if the interrupt variable usage in here actually does what i expect
 
         self.recommendations=[]
         self.recmds_fixes=[]
@@ -1057,7 +1067,6 @@ class Ui(QtWidgets.QMainWindow):
 
             # all the code that has to be executed to set the snapshot are inside this function
             def set_snapshot():
-                self.setUiElements()
                 
                 if not (self.verticalLayout_2.itemAt(1) and isinstance(self.verticalLayout_2.itemAt(1),QtWidgets.QHBoxLayout)) and \
                     not (self.verticalLayout_2.itemAt(2) and isinstance(self.verticalLayout_2.itemAt(2),QtWidgets.QHBoxLayout)):
@@ -1247,7 +1256,7 @@ class Ui(QtWidgets.QMainWindow):
         except TypeError:
             pass
         if new_handler is not None:
-            printer(signal)
+            # printer(signal)
             signal.connect(new_handler)
             
     def insertInto(self,layout,index,widget):
@@ -1256,9 +1265,9 @@ class Ui(QtWidgets.QMainWindow):
             item =self.itemAt(i).widget()
             item.setParent(None)
             items.append(item)
-            printer(item,'item')
+            # printer(item,'item')
             
-        printer('widget',widget)
+        # printer('widget',widget)
             
         layout.addWidget(widget)
         for i in reversed(range(len(items))):
@@ -1267,7 +1276,7 @@ class Ui(QtWidgets.QMainWindow):
     def comboBox_grub_default_on_current_index_change(self):
         try:
             """ current index changed callback """
-            printer('combo box currentIndexChanged')
+            # printer('combo box currentIndexChanged')
             comboBox = self.sender()
             combo_text =self.all_entries[comboBox.currentIndex()]
             grub_default = self.get_comboBox_grub_default()
@@ -1275,14 +1284,14 @@ class Ui(QtWidgets.QMainWindow):
                 # self.modified_original = True
                 if comboBox not in self.original_modifiers:
                     self.original_modifiers.append(self.sender())
-                printer(grub_default,combo_text)
+                # printer(grub_default,combo_text)
             elif grub_default ==combo_text:
                 if comboBox in self.original_modifiers:
                     self.original_modifiers.remove(comboBox)
 
-            printer('modifed original is now',self.modified_original)
-            printer('original modifiers',self.original_modifiers)
-            printer(self.comboBox_configurations.itemData(1))
+            # printer('modifed original is now',self.modified_original)
+            # printer('original modifiers',self.original_modifiers)
+            # printer(self.comboBox_configurations.itemData(1))
             self.handle_modify()
         except Exception as e:
             printer(traceback.format_exc())
@@ -1300,24 +1309,24 @@ class Ui(QtWidgets.QMainWindow):
 
                 
             
-            printer(btn.text(),'btn.text() radiobutton_toggle_callback')
+            # printer(btn.text(),'btn.text() radiobutton_toggle_callback')
             if btn.text()=='predefined:':
-                printer('yes')
+                # printer('yes')
                 default_entry =getValue('GRUB_DEFAULT=',self.issues)
-                printer('grub_default')
+                # printer('grub_default')
                 if (default_entry !='saved' and default_entry.lower() !='none') and btn.isChecked():
                     if btn  in self.original_modifiers:
                         self.original_modifiers.remove(btn)  
-                    printer('1st')  
+                    # printer('1st')  
                 elif (default_entry =='saved' or default_entry.lower() =='none') and not btn.isChecked():
                     if btn in self.original_modifiers:
                         self.original_modifiers.remove(btn)
-                    printer('2nd')
+                    # printer('2nd')
                 else:
-                    printer('last')
+                    # printer('last')
                     if btn not in self.original_modifiers:
                         self.original_modifiers.append(btn)
-            printer(self.original_modifiers)
+            # printer(self.original_modifiers)
             self.handle_modify()
 
         except Exception as e:
@@ -1332,7 +1341,7 @@ class Ui(QtWidgets.QMainWindow):
         try:
             if len(self.original_modifiers)>0:
                 current_item = self.configurations[self.comboBox_configurations.currentIndex()]
-                printer(current_item)
+                # printer(current_item)
                 if '(modified)' not in current_item:
                     stringy=current_item+'(modified)'
                     self.comboBox_configurations.blockSignals(True)
@@ -1522,7 +1531,7 @@ class SetRecommendations(QtWidgets.QMainWindow):
             self.pushButton = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
             self.pushButton.setObjectName("pushButton")
             self.pushButton.setText('Fix')
-            print(self.horizontalLayout)
+            # print(self.horizontalLayout)
 
 
             self.pushButton.clicked.connect(self.btn_fix_callback_creator(self.horizontalLayout,fixes_list[i],self.verticalLayout_2))
@@ -1579,6 +1588,13 @@ class DialogUi(QtWidgets.QDialog):
         else:
             self.btn_cancel.clicked.connect(self.btn_cancel_callback)
         self.btn_ok.clicked.connect(self.btn_ok_callback)
+
+        
+        #make sure window is in center of the screen
+        qtRectangle = self.frameGeometry()
+        centerPoint = QDesktopWidget().availableGeometry().center()
+        qtRectangle.moveCenter(centerPoint)
+        self.move(qtRectangle.topLeft())
 
     def btn_ok_callback(self):
         self.close()
