@@ -16,6 +16,8 @@ import math
 from PyQt5.QtWidgets import QMainWindow, QLabel
 from PyQt5.QtWidgets import QGridLayout, QWidget, QDesktopWidget
 import logging
+from os_prober import getOs
+import chroot
 
 file_loc='/etc/default/grub'
 
@@ -378,6 +380,59 @@ class Ui(QtWidgets.QMainWindow):
         self.tabWidget.currentChanged.connect(self.tabWidget_currentChanged_callback)
         self.checkBox_look_for_other_os.clicked.connect(self.checkBox_look_for_other_os_callback)
 
+        #add chroot to tab
+
+
+        self.chroot = chroot.ChrootUi()
+        self.chroot.setObjectName("chroot")
+        # self.gridLayout_7 = QtWidgets.QGridLayout(self.chroot)
+        # self.gridLayout_7.setObjectName("gridLayout_7")
+        # self.VLyout_chroot = QtWidgets.QVBoxLayout()
+        self.tabWidget.addTab(self.chroot, "Chroot")
+        self.chroot_status='before'
+        #update chroot tab
+        self.update_chroot_os()
+
+    def update_chroot_os(self):
+        """ add the available operating systems to chroot tab """
+        operating_systems,partitions=getOs()
+
+        for i,os in enumerate(operating_systems):
+            partition =partitions[i]
+            item=QtWidgets.QListWidgetItem(os+" on "+partition)
+            self.chroot.listWidget.addItem(item)
+        self.chroot.listWidget.itemClicked.connect(self.listWidget_itemClicked_callback)
+
+    def btn_exit_chroot_callback(self):
+        self.chroot_after.deleteLater()
+        self.tabWidget.removeTab(2)
+        self.chroot=chroot.ChrootUi()
+        self.tabWidget.addTab(self.chroot,'Chroot')
+        self.chroot_status='before'
+        self.update_chroot_os()
+        self.tabWidget.setCurrentIndex(2)
+
+    def listWidget_itemClicked_callback(self, item):
+        print(item.text())
+        if self.chroot_status == 'before':
+            self.chroot.deleteLater()
+            self.tabWidget.removeTab(2)
+
+            self.chroot_after=chroot.ChrootAfterUi()
+            self.tabWidget.addTab(self.chroot_after,'Chroot')
+            self.chroot_status='after'
+            
+            
+            self.tabWidget.setCurrentIndex(2)
+            self.chroot_after.btn_exit_chroot.clicked.connect(self.btn_exit_chroot_callback)
+
+
+        else:
+            self.chroot_after.deleteLater()
+            self.tabWidget.removeTab(2)
+            self.chroot=chroot.ChrootUi()
+            self.tabWidget.addTab(self.chroot,'Chroot')
+            self.chroot_status='before'
 
     def tabWidget_currentChanged_callback(self,index):
         # print('index of tab is ',index)

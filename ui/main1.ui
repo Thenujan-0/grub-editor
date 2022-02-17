@@ -27,7 +27,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="edit_configurations">
        <attribute name="title">
@@ -337,59 +337,6 @@
            </layout>
           </widget>
          </widget>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QWidget" name="chroot">
-       <attribute name="title">
-        <string>chroot</string>
-       </attribute>
-       <layout class="QGridLayout" name="gridLayout_7">
-        <item row="0" column="0">
-         <layout class="QVBoxLayout" name="VLyout_chroot">
-          <property name="spacing">
-           <number>40</number>
-          </property>
-          <property name="topMargin">
-           <number>0</number>
-          </property>
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_11">
-            <item>
-             <widget class="QLabel" name="label_3">
-              <property name="text">
-               <string>Chroot is accessing another operating system from this operating system.Grub-editor uses manjaro-chroot to chroot</string>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <widget class="QGroupBox" name="groupBox_3">
-            <property name="title">
-             <string>Select an operating system to chroot into</string>
-            </property>
-            <layout class="QGridLayout" name="gridLayout_9">
-             <item row="1" column="0">
-              <layout class="QVBoxLayout" name="verticalLayout_3">
-               <item>
-                <widget class="QListWidget" name="listWidget">
-                 <item>
-                  <property name="text">
-                   <string>Garuda on /dev/sda2  btrfs</string>
-                  </property>
-                 </item>
-                </widget>
-               </item>
-              </layout>
-             </item>
-            </layout>
-           </widget>
-          </item>
-         </layout>
         </item>
        </layout>
       </widget>
