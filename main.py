@@ -61,7 +61,12 @@ subprocess.Popen([f'mkdir -p {HOME}/.grub-editor/logs'],shell=True)
 subprocess.Popen([f'touch {HOME}/.grub-editor/logs/main.log'],shell=True)
 
 
-logging.basicConfig(filename=f'{HOME}/.grub-editor/logs/main.log',format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+#catch the error that occures when this file isnt created yet
+try:
+    logging.basicConfig(filename=f'{HOME}/.grub-editor/logs/main.log',format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+except:
+    subprocess.run([f'mkdir -p {HOME}/.grub-editor/logs'],shell=True)
+    subprocess.run([f'touch {HOME}/.grub-editor/logs/main.log'],shell=True)
 
 def check_dual_boot():
     out = subprocess.check_output(['pkexec os-prober'],shell=True).decode()
@@ -114,6 +119,8 @@ def initialize_temp_file(file_path):
 def setValue(name,val):
     """ writes the changes to ~/.cache/grub-editor/temp.txt call initialize_temp_file before start writing to temp.txt"""
     target_file=f'{HOME}/.cache/grub-editor/temp.txt'
+
+
 
     if name[-1] != '=':
         raise Exception("name passed for getvalue doesnt contain = as last character")
@@ -287,7 +294,13 @@ class Ui(QtWidgets.QMainWindow):
         """ resize event handler """
         self.resized.emit()
         return super(Ui, self).resizeEvent(event)
-
+    
+    def closeEvent(self,*args,**kwargs):
+        super(QtWidgets.QMainWindow, self).__init__()
+        
+        #todo unmount the mounted devices
+        
+        
     def someFunction(self):
         # print("someFunction"+str(random.randint(0, 100)))
         # pass
@@ -385,9 +398,6 @@ class Ui(QtWidgets.QMainWindow):
 
         self.chroot = chroot.ChrootUi()
         self.chroot.setObjectName("chroot")
-        # self.gridLayout_7 = QtWidgets.QGridLayout(self.chroot)
-        # self.gridLayout_7.setObjectName("gridLayout_7")
-        # self.VLyout_chroot = QtWidgets.QVBoxLayout()
         self.tabWidget.addTab(self.chroot, "Chroot")
         self.chroot_status='before'
         #update chroot tab
@@ -488,13 +498,7 @@ class Ui(QtWidgets.QMainWindow):
         print('current index of combox configuration is',self.comboBox_configurations.currentIndex())
 
         self.comboBox_configurations.setCurrentIndex(0)
-        # self.comboBox_configurations.setCurrentIndex(0)
-        # self.comboBox_configurations.setCurrentIndex(0)
-        print(self.comboBox_configurations.blockSignals(False))
-        print('current index of combox configuration is',self.comboBox_configurations.currentIndex())
-        print(self.original_modifiers)
-        # sleep(10)
-        # self.comboBox_configurations.setCurrentIndex(2)
+        self.comboBox_configurations.blockSignals(False)
 
 
     def checkBox_show_menu_on_toggle(self):
@@ -739,6 +743,7 @@ class Ui(QtWidgets.QMainWindow):
         
         # clear the file in cache
         subprocess.run([f'rm {HOME}/.cache/grub-editor/temp.txt'],shell=True)
+        subprocess.run([f'mkdir -p {HOME}/.cache/grub-editor'],shell=True)
         subprocess.run([f'touch {HOME}/.cache/grub-editor/temp.txt'],shell=True)
 
         index =self.comboBox_configurations.currentIndex()
@@ -1298,7 +1303,7 @@ class Ui(QtWidgets.QMainWindow):
         except Exception as e:
             printer(traceback.format_exc())
             printer(str(e))
-            
+        
         
         
     def reconnect(self,signal ,new_handler=None,old_handler=None):
@@ -1623,13 +1628,13 @@ class SetRecommendations(QtWidgets.QMainWindow):
                 window.set_recommendations_window.close()
                 window.btn_set_callback()       
      
-            
+
         return btn_fix_callback
 
     def btn_ignore_callback_creator(self,HLayout):
         def btn_ignore_callback(self):
             clearLayout(HLayout)
-        return btn_fix_callback
+        return btn_ignore_callback
 
 
 
@@ -1653,7 +1658,7 @@ class DialogUi(QtWidgets.QDialog):
 
     def btn_ok_callback(self):
         self.close()
-    
+
     def btn_cancel_callback(self):
         self.close()
 

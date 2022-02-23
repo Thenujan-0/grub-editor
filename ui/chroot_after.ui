@@ -25,7 +25,7 @@
         <number>20</number>
        </property>
        <item>
-        <widget class="QPushButton" name="pushButton_2">
+        <widget class="QPushButton" name="btn_reinstall_grub_package">
          <property name="toolTip">
           <string/>
          </property>
@@ -35,7 +35,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButton">
+        <widget class="QPushButton" name="btn_reinstall_grub_to_device">
          <property name="text">
           <string>reinstall grub to device</string>
          </property>
@@ -48,7 +48,7 @@
        <item>
         <widget class="QPushButton" name="pushButton_3">
          <property name="text">
-          <string>Reload application from chroot environment</string>
+          <string>update grub configurations</string>
          </property>
         </widget>
        </item>
