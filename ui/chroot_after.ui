@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>479</width>
-    <height>385</height>
+    <width>584</width>
+    <height>459</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,48 +16,187 @@
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
     <layout class="QVBoxLayout" name="verticalLayout">
+     <property name="topMargin">
+      <number>30</number>
+     </property>
      <property name="bottomMargin">
-      <number>40</number>
+      <number>50</number>
      </property>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout">
-       <property name="bottomMargin">
-        <number>20</number>
-       </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_4">
        <item>
-        <widget class="QPushButton" name="btn_reinstall_grub_package">
-         <property name="toolTip">
-          <string/>
-         </property>
+        <widget class="QLabel" name="label">
          <property name="text">
-          <string>Reinstall grub package</string>
+          <string>Chrooted successfully into kde neon</string>
          </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="btn_reinstall_grub_to_device">
-         <property name="text">
-          <string>reinstall grub to device</string>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
          </property>
         </widget>
        </item>
       </layout>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <spacer name="verticalSpacer">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <property name="bottomMargin">
+        <number>20</number>
+       </property>
        <item>
-        <widget class="QPushButton" name="pushButton_3">
+        <widget class="QToolButton" name="btn_reinstall_grub_package">
          <property name="text">
-          <string>update grub configurations</string>
+          <string>reinstall grub package</string>
+         </property>
+         <property name="icon">
+          <iconset theme="package-reinstall"/>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>64</width>
+           <height>64</height>
+          </size>
+         </property>
+         <property name="toolButtonStyle">
+          <enum>Qt::ToolButtonTextUnderIcon</enum>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="btn_exit_chroot">
+        <widget class="QToolButton" name="btn_reinstall_grub_to_device">
          <property name="text">
-          <string>Exit chroot</string>
+          <string>reinstall grub to device</string>
+         </property>
+         <property name="icon">
+          <iconset theme="drive-harddisk"/>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>64</width>
+           <height>64</height>
+          </size>
+         </property>
+         <property name="toolButtonStyle">
+          <enum>Qt::ToolButtonTextUnderIcon</enum>
          </property>
         </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <spacer name="verticalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QToolButton" name="btn_update_grub_configuration">
+         <property name="text">
+          <string>update grub configuration</string>
+         </property>
+         <property name="icon">
+          <iconset theme="update-none"/>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>64</width>
+           <height>64</height>
+          </size>
+         </property>
+         <property name="toolButtonStyle">
+          <enum>Qt::ToolButtonTextUnderIcon</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QToolButton" name="btn_exit_chroot">
+         <property name="minimumSize">
+          <size>
+           <width>180</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>exit chroot</string>
+         </property>
+         <property name="icon">
+          <iconset theme="view-close"/>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>64</width>
+           <height>64</height>
+          </size>
+         </property>
+         <property name="toolButtonStyle">
+          <enum>Qt::ToolButtonTextUnderIcon</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </item>

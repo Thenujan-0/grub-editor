@@ -47,6 +47,7 @@ class ProgressUi(QtWidgets.QMainWindow):
             self.scrollArea.setWidget(self.scrollAreaWidgetContents)
             self.verticalLayout.addWidget(self.scrollArea)
             # lbl =QtWidgets.QLabel(self.centralwidget)
+            
             # self.verticalLayout.addWidget(lbl)
             
             btn.setText("Hide details")
