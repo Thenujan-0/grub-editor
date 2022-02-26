@@ -17,6 +17,7 @@ class ChrootAfterUi(QtWidgets.QWidget):
         super(ChrootAfterUi, self).__init__()
         uic.loadUi(f"{PATH}/ui/chroot_after.ui",self)
         # self.show()
+        self.btn_reinstall_grub_package.clicked.connect(self.btn_reinstall_grub_package_callback)
         
     def btn_reinstall_grub_package_callback(self):
         """ callback for btn_reinstall_grub_package 
@@ -25,6 +26,8 @@ class ChrootAfterUi(QtWidgets.QWidget):
         """
         # subprocess.run([''])
         self.progress_window=progress.ProgressUi()
+        self.progress_window.label.setText('reinstalling grub package..')
+        self.progress_window.show()
 
 if __name__ == "__main__":
     app=QtWidgets.QApplication(sys.argv)
