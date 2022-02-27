@@ -28,6 +28,9 @@ class ProgressUi(QtWidgets.QMainWindow):
         self.resize(400,200)
         
         
+        self.lbl_details_text=''
+        self.lbl_details=None
+        
         self.btn_show_details.clicked.connect(self.btn_show_details_callback)
         
     def btn_show_details_callback(self):
@@ -42,6 +45,8 @@ class ProgressUi(QtWidgets.QMainWindow):
             self.verticalLayout_2 = QtWidgets.QVBoxLayout()
             self.lbl_details = QtWidgets.QLabel(self.scrollAreaWidgetContents)
             self.lbl_details.setWordWrap(True)
+            self.update_lbl_details()
+            
             self.verticalLayout_2.addWidget(self.lbl_details)
             self.gridLayout_2.addLayout(self.verticalLayout_2, 0, 0, 1, 1)
             self.scrollArea.setWidget(self.scrollAreaWidgetContents)
@@ -54,7 +59,14 @@ class ProgressUi(QtWidgets.QMainWindow):
             
         else:
             self.verticalLayout.itemAt(3).widget().deleteLater()
+            self.lbl_details=None
             btn.setText("Show details")
+    
+    def update_lbl_details(self):
+        ''' updates the lbl_details using the lbl_details_text if lbl_details is not None '''
+        if self.lbl_details is not None:
+            self.lbl_details.setText(self.lbl_details_text)
+            
             
 if __name__=="__main__":
     app = QtWidgets.QApplication([])

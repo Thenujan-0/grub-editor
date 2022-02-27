@@ -18,6 +18,9 @@ from PyQt5.QtWidgets import QGridLayout, QWidget, QDesktopWidget
 import logging
 from os_prober import getOs
 import chroot
+from worker import Worker ,WorkerSignals
+from dialog import DialogUi
+from threading import Thread
 
 file_loc='/etc/default/grub'
 
@@ -218,71 +221,6 @@ def clearLayout(layout):
             elif child.layout() is not None:
                 clearLayout(child.layout())
 
-class WorkerSignals(QtCore.QObject):
-    '''
-    Defines the signals available from a running worker thread.
-
-    Supported signals are:
-
-    finished
-        No data
-
-    error
-        tuple (exctype, value, traceback.format_exc() )
-
-    result
-        object data returned from processing, anything
-
-    '''
-    finished = QtCore.pyqtSignal()
-    error = QtCore.pyqtSignal(tuple)
-    result = QtCore.pyqtSignal(object)
-
-   
-class Worker(QtCore.QRunnable):
-    '''
-    Worker thread
-
-    Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
-
-    :param callback: The function callback to run on this worker thread. Supplied args and
-                     kwargs will be passed through to the runner.
-    :type callback: function
-    :param args: Arguments to pass to the callback function
-    :param kwargs: Keywords to pass to the callback function
-
-    '''
-
-    def __init__(self, fn, *args, **kwargs):
-        super(Worker, self).__init__()
-        # Store constructor arguments (re-used for processing)
-        self.fn = fn
-        self.args = args
-        self.kwargs = kwargs
-        self.signals = WorkerSignals()
-
-
-    # this is a decorator
-    # now when this run function is executed it actually calls the QtCore.pyqtSlot function wuth run function as argument
-    @QtCore.pyqtSlot()
-    def run(self):
-        '''
-        Initialise the runner function with passed args, kwargs.
-        '''
-
-        # Retrieve args/kwargs here; and fire processing using them
-        try:
-            result = self.fn(
-                *self.args, **self.kwargs
-            )
-        except:
-            traceback.print_exc()
-            exctype, value = sys.exc_info()[:2]
-            self.signals.error.emit((exctype, value, traceback.format_exc()))
-        else:
-            self.signals.result.emit(result)  # Return the result of the processing
-        finally:
-            self.signals.finished.emit()  # Done
                     
 class Ui(QtWidgets.QMainWindow):
     resized = QtCore.pyqtSignal()
@@ -1637,32 +1575,12 @@ class SetRecommendations(QtWidgets.QMainWindow):
         return btn_ignore_callback
 
 
+def main():
+    app =QtWidgets.QApplication(sys.argv)
+    global window
+    window=Ui()
+    app.exec_()
 
-class DialogUi(QtWidgets.QDialog):
-    def __init__(self,btn_cancel=True):
-        super(DialogUi,self).__init__()
-        # print(PATH)
-        uic.loadUi(f'{PATH}/ui/dialog.ui',self)
-        if not btn_cancel:
-            self.horizontalLayout.takeAt(0).widget().deleteLater()
-        else:
-            self.btn_cancel.clicked.connect(self.btn_cancel_callback)
-        self.btn_ok.clicked.connect(self.btn_ok_callback)
-
-        
-        #make sure window is in center of the screen
-        qtRectangle = self.frameGeometry()
-        centerPoint = QDesktopWidget().availableGeometry().center()
-        qtRectangle.moveCenter(centerPoint)
-        self.move(qtRectangle.topLeft())
-
-    def btn_ok_callback(self):
-        self.close()
-
-    def btn_cancel_callback(self):
-        self.close()
-
-
-app =QtWidgets.QApplication(sys.argv)
-window=Ui()
-app.exec_()
+if __name__ =='__main__':
+    # Thread(target=main).start()
+    main()

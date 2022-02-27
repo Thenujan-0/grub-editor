@@ -2,7 +2,8 @@
 check if the current grub.cfg is up to date with /etc/default/grub
 check if other operating systems are there by executing os prober and if it takes too long then use grub.cfg to find out
 and then if other operating systems are there instruct the user to use 0.0 instead of 0 in timeout
-
+show no snapshots found above the list widget if no snapshots were found
+create a dialog to show error messages
 add UEFI support
 
 
