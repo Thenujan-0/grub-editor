@@ -19,22 +19,47 @@
      <item>
       <widget class="QLabel" name="label">
        <property name="text">
-        <string>The partition you have selected is not empty and is too big for your system specs.It is recommended that you create another partition using gparted or kparted  and then try again.</string>
+        <string>&lt;p&gt;An error has occured.Please consider reporting this to &lt;span&gt;&lt;a href=&quot;https://github.com/Thenujan-0/grub-editor/issues&quot;&gt;github page&lt;/a&gt;&lt;/span&gt;&lt;/p&gt;</string>
        </property>
        <property name="wordWrap">
         <bool>true</bool>
        </property>
+       <property name="textInteractionFlags">
+        <set>Qt::LinksAccessibleByMouse</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QScrollArea" name="scrollArea">
+       <property name="widgetResizable">
+        <bool>true</bool>
+       </property>
+       <widget class="QWidget" name="scrollAreaWidgetContents">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>558</width>
+          <height>112</height>
+         </rect>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_2">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Error 404</string>
+           </property>
+           <property name="textInteractionFlags">
+            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
       </widget>
      </item>
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout">
-       <item>
-        <widget class="QPushButton" name="btn_cancel">
-         <property name="text">
-          <string>Cancel</string>
-         </property>
-        </widget>
-       </item>
        <item>
         <spacer name="horizontalSpacer">
          <property name="orientation">
