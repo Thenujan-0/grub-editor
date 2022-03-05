@@ -1,5 +1,9 @@
 #!/usr/bin/python
 from PyQt5 import QtCore ,QtWidgets, uic,QtGui
+from PyQt5.QtWidgets import QMainWindow, QLabel
+from PyQt5.QtWidgets import QGridLayout, QWidget, QDesktopWidget
+
+
 import sys
 from functools import partial
 import subprocess
@@ -13,16 +17,20 @@ import traceback
 import json
 import random
 import math
-from PyQt5.QtWidgets import QMainWindow, QLabel
-from PyQt5.QtWidgets import QGridLayout, QWidget, QDesktopWidget
+
 import logging
-from os_prober import getOs
-import chroot
-from worker import Worker ,WorkerSignals
-from dialog import DialogUi
 from threading import Thread
 
+from libs.worker import Worker
+from libs.os_prober import getOs
+from widgets import chroot
+from widgets.dialog import DialogUi
+
+
+
 file_loc='/etc/default/grub'
+
+
 
 def printer(*args):
     """ writes to log and writes to console """
@@ -255,7 +263,14 @@ class Ui(QtWidgets.QMainWindow):
     def __init__(self):
         super(Ui, self).__init__()
         self.threadpool= QtCore.QThreadPool()
-        uic.loadUi(f'{PATH}/ui/main1.ui',self)
+        uic.loadUi(f'{PATH}/ui/main.ui',self)
+        
+        
+        print(app.font(),'default font')
+        print('------------------------')
+        
+        #to make sure that Main window is unaccesible when a child window (QWidget) is open
+        # self.setWindowModality(QtCore.Qt.ApplicationModal)
 
         #make sure window is in center of the screen
         qtRectangle = self.frameGeometry()
@@ -287,7 +302,7 @@ class Ui(QtWidgets.QMainWindow):
         self.VLayout_snapshot_parent.addStretch()
         
         #load the entries for available operating systems
-        import find_entries
+        import libs.find_entries as find_entries
         self.main_entries = find_entries.main_entries
 
         #add all the available operating systems to comboBox_grub_default and self.all_entries
@@ -312,13 +327,13 @@ class Ui(QtWidgets.QMainWindow):
         self.btn_substract.clicked.connect(self.btn_substract_callback)
         self.issues=[]
         
-        self.setUiElements()
+        self.setUiElements(show_issues=True)
         
         self.original_modifiers=[]
         self.modified_original =False
         
         
-        self.comboBox_configurations.currentIndexChanged.connect(self.load_configuration_from_callback)
+        self.comboBox_configurations.currentIndexChanged.connect(self.comboBox_configurations_callback)
         if len(self.issues) > 0:
             self.issuesUi=IssuesUi(self.issues)
             self.issuesUi.show()
@@ -366,7 +381,7 @@ class Ui(QtWidgets.QMainWindow):
             self.chroot.deleteLater()
             self.tabWidget.removeTab(2)
 
-            self.chroot_after=chroot.ChrootAfterUi()
+            self.chroot_after=chroot.ChrootAfterUi(MainWindow)
             self.tabWidget.addTab(self.chroot_after,'Chroot')
             self.chroot_status='after'
             
@@ -460,7 +475,7 @@ class Ui(QtWidgets.QMainWindow):
                     self.original_modifiers.append(btn)
         self.handle_modify()
 
-    def load_configuration_from_callback(self,value):
+    def comboBox_configurations_callback(self,value):
         global file_loc
         # printer(self.configurations[value],'load configuration from callback')
         value =self.configurations[value]
@@ -513,9 +528,9 @@ class Ui(QtWidgets.QMainWindow):
         self.handle_modify()
 
         
-    def set_comboBox_grub_default(self):
+    def set_comboBox_grub_default(self,show_invalid_default=False):
         """ sets the right index to comboBox_grub_default and radio buttons,
-        if second argument is true then value of grub_default by reading will be returned"""
+        if second argument is true then it will check if the grub default value is invalid and if it is invalid it will show a dialog"""
         grub_default_val =getValue('GRUB_DEFAULT=',self.issues)
         if grub_default_val[0]=='"':
             grub_default_val= grub_default_val[1:]
@@ -550,9 +565,11 @@ class Ui(QtWidgets.QMainWindow):
             try:
                 self.comboBox_grub_default.setCurrentIndex(self.all_entries.index(grub_default_val))    
             except ValueError:
-                self.dialog_invalid_default_entry=DialogUi(btn_cancel=False)
-                self.dialog_invalid_default_entry.label.setText("/etc/grub/default currently has an invalid default entry")
-                self.dialog_invalid_default_entry.show()
+                print(traceback.format_exc())
+                if show_invalid_default:
+                    self.dialog_invalid_default_entry=DialogUi(btn_cancel=False)
+                    self.dialog_invalid_default_entry.label.setText("/etc/grub/default currently has an invalid default entry")
+                    self.dialog_invalid_default_entry.show()
 
                 #add the invalid entry to the combo box
                 invalid_value=getValue('GRUB_DEFAULT=',self.issues)
@@ -561,10 +578,19 @@ class Ui(QtWidgets.QMainWindow):
                 if invalid_value[-1]=='"':
                     invalid_value=invalid_value[:-1]
 
-                self.comboBox_grub_default.addItem(invalid_value+" (INVALID)")
-                self.all_entries.append(invalid_value+"(INVALID)")
-                print(self.all_entries[-1],'last item is')
-                self.comboBox_grub_default.setCurrentIndex(len(self.all_entries)-1)
+                
+                #check if it already exists in the grub_default comboBox
+                if invalid_value not in self.all_entries:
+                    
+                    # print(self.comboBox_grub_default.itemAt(0))
+                    self.comboBox_grub_default.addItem(invalid_value)
+                    print(self.comboBox_grub_default.itemText(1))
+                    self.all_entries.append(invalid_value)
+                    print(self.all_entries[-1],'last item is')
+                    self.comboBox_grub_default.setCurrentIndex(len(self.all_entries)-1)
+                else:
+                    index =self.all_entries.index(invalid_value)
+                    self.comboBox_grub_default.setCurrentIndex(index)
 
     def get_comboBox_grub_default(self):
         """returns the value comboBox grub_default should have"""
@@ -577,9 +603,11 @@ class Ui(QtWidgets.QMainWindow):
         grub_default_val=grub_default_val.replace('>',' >')
         return grub_default_val
                 
-    def setUiElements(self,reload_confs=True):
-        """reloads the ui elements that should be reloaded"""
+    def setUiElements(self,reload_confs=True,show_issues=False):
+        """reloads the ui elements that should be reloaded
+            when show issues is true it will show a dialog if the grub default value is invalid
         
+        """
         
         try:
             #catch error that might occur when self.configurations is not initialized
@@ -645,7 +673,7 @@ class Ui(QtWidgets.QMainWindow):
             elif getValue('GRUB_TIMEOUT_STYLE=',self.issues)=='menu':
                 self.checkBox_show_menu.setChecked(True)
 
-            self.set_comboBox_grub_default()
+            self.set_comboBox_grub_default(show_invalid_default=show_issues)
                 
             if getValue('GRUB_TIMEOUT=',self.issues)=='-1' or getValue('GRUB_TIMEOUT=',self.issues)=='None':
                 self.checkBox_boot_default_entry_after.setChecked(False)
@@ -1027,11 +1055,11 @@ class Ui(QtWidgets.QMainWindow):
 
             
 
-    def btn_show_orginal_callback(self):
-        global file_loc
-        file_loc='/etc/default/grub'
-        self.sender().parent().deleteLater()
-        self.setUiElements()
+    # def btn_show_orginal_callback(self):
+    #     global file_loc
+    #     file_loc='/etc/default/grub'
+    #     self.sender().parent().deleteLater()
+    #     self.setUiElements()
 
             
             
@@ -1039,7 +1067,7 @@ class Ui(QtWidgets.QMainWindow):
         try:
             global file_loc
             file_loc= f'{HOME}/.grub-editor/snapshots/'+arg
-            self.setUiElements()
+            self.setUiElements(show_issues=True)
             view_default=get_preference('view_default')
             self.view_btn_win =ViewButtonUi(file_loc)
             if view_default=='None':
@@ -1337,8 +1365,13 @@ class Ui(QtWidgets.QMainWindow):
         it changes the loaded configuration from combo box value""" 
         # print('handle_modify: start',self.original_modifiers)
         try:
+            current_item = self.configurations[self.comboBox_configurations.currentIndex()]
+            print(current_item+':current_item')
+            # if current_item=='/etc/default/grub' or current_item=='/etc/default/grub(modified)':
+            
+            print('yes')
             if len(self.original_modifiers)>0:
-                current_item = self.configurations[self.comboBox_configurations.currentIndex()]
+                print(self.original_modifiers)
                 # printer(current_item)
                 if '(modified)' not in current_item:
                     stringy=current_item+'(modified)'
@@ -1488,7 +1521,7 @@ class ViewButtonUi(QtWidgets.QDialog):
         subprocess.Popen([f'xdg-open \'{self.file_location}\''],shell=True)
         
     def btn_on_the_application_itself_callback(self):
-        window.tabWidget.setCurrentIndex(0)
+        MainWindow.tabWidget.setCurrentIndex(0)
         self.safe_close('on_the_application_itself')
         
 class CreateSnapshotUi(QtWidgets.QMainWindow):
@@ -1513,7 +1546,12 @@ class SetRecommendations(QtWidgets.QMainWindow):
         centerPoint = QDesktopWidget().availableGeometry().center()
         qtRectangle.moveCenter(centerPoint)
         self.move(qtRectangle.topLeft())
+        
         self.fixes_list =fixes_list
+        
+        
+        
+        
         
         for i in range(len(recommendations_list)):
             recommendation =recommendations_list[i]
@@ -1545,14 +1583,14 @@ class SetRecommendations(QtWidgets.QMainWindow):
         self.btn_fix_all.clicked.connect(self.btn_fix_all_callback)
 
     def btn_ignore_all_callback(self):
-        window.btn_set_callback(unsafe=True)
-        window.set_recommendations_window.close()
+        MainWindow.btn_set_callback(unsafe=True)
+        MainWindow.set_recommendations_window.close()
 
     def btn_fix_all_callback(self):
         for fix in self.fixes_list:
             fix()
-        window.btn_set_callback()
-        window.set_recommendations_window.close()
+        MainWindow.btn_set_callback()
+        MainWindow.set_recommendations_window.close()
 
 
     def btn_fix_callback_creator(self,HLayout,fix,verticalLayout_2):
@@ -1563,8 +1601,8 @@ class SetRecommendations(QtWidgets.QMainWindow):
             clearLayout(HLayout)
 
             if verticalLayout_2.count() == 0:
-                window.set_recommendations_window.close()
-                window.btn_set_callback()       
+                MainWindow.set_recommendations_window.close()
+                MainWindow.btn_set_callback()       
      
 
         return btn_fix_callback
@@ -1576,9 +1614,10 @@ class SetRecommendations(QtWidgets.QMainWindow):
 
 
 def main():
+    global app
     app =QtWidgets.QApplication(sys.argv)
-    global window
-    window=Ui()
+    global MainWindow
+    MainWindow=Ui()
     app.exec_()
 
 if __name__ =='__main__':

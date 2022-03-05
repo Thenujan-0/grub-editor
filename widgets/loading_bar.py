@@ -104,7 +104,12 @@ class LoadingBar(QWidget):
                 self.position-=1
 
             qp=QPainter()
-            self.update()
+            
+            #Error might occur if the LoadingBar widget is deleted so to catch that
+            try:
+                self.update()
+            except RuntimeError:
+                pass
         
     
     def startWorker(self,fn,*args,**kwargs):

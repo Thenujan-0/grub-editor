@@ -2,7 +2,6 @@ cmd_find_entries=["awk -F\\' '$1==\"menuentry \" || $1==\"submenu \" {print i++ 
 import traceback
 import subprocess
 out =subprocess.getoutput(cmd_find_entries)
-
 class MainEntry():
     parent=None
     title:str

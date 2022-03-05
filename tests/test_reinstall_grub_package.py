@@ -15,37 +15,41 @@ import pytest
 def test_grub_timeout_add_substract(qtbot):
     
     
-    widget = main.Ui()
-    qtbot.addWidget(widget)
+    Window = main.Ui()
+    qtbot.addWidget(Window)
+    
+    time_out_val =Window.ledit_grub_timeout.text()
+    print(time_out_val,'default grub_timeout_val')
+    
     # click in the Greet button and make sure it updates the appropriate label
-    qtbot.mouseClick(widget.btn_add, QtCore.Qt.LeftButton)
-    assert widget.ledit_grub_timeout.text() == "21.0"
-    qtbot.mouseClick(widget.btn_substract, QtCore.Qt.LeftButton)
-    assert widget.ledit_grub_timeout.text()=='20.0'
+    qtbot.mouseClick(Window.btn_add, QtCore.Qt.LeftButton)
+    assert Window.ledit_grub_timeout.text() == "21.0"
+    qtbot.mouseClick(Window.btn_substract, QtCore.Qt.LeftButton)
+    assert Window.ledit_grub_timeout.text()=='20.0'
     
-    widget.tabWidget.setCurrentIndex(2) 
-    widget.show()
-    # qtbot.waitForWindowShown(widget)
-    with qtbot.waitExposed(widget):
-        pass
-    sleep(1)
+    Window.tabWidget.setCurrentIndex(2) 
+    Window.show()
+    # qtbot.waitForWindowShown(Window)
+    # with qtbot.waitExposed(Window):
+        # pass
+    # sleep(1)
     
-    lv=widget.chroot.listWidget
+    lv=Window.chroot.listWidget
     item =lv.item(0)
     rect = lv.visualItemRect(item)
     center = rect.center()
     print(center)
     print(item.text())
     assert lv.itemAt(center).text() == item.text()
-    assert lv.currentRow() == 0
+    # assert lv.currentRow() == 0
 
     
-    qtbot.mouseClick(widget.chroot.listWidget.viewport(),QtCore.Qt.LeftButton,pos=center)
-    # widget.chroot.listWidget.item(2).click()
-    assert type( widget.tabWidget.currentWidget()).__name__ =='ChrootAfterUi'
-    currentWidget=widget.tabWidget.currentWidget()
+    qtbot.mouseClick(Window.chroot.listWidget.viewport(),QtCore.Qt.LeftButton,pos=center)
+    # Window.chroot.listWidget.item(2).click()
+    assert type( Window.tabWidget.currentWidget()).__name__ =='ChrootAfterUi'
+    currentWidget=Window.tabWidget.currentWidget()
     qtbot.mouseClick(currentWidget.btn_reinstall_grub_package,QtCore.Qt.LeftButton)
-    with qtbot.waitExposed(widget):
+    with qtbot.waitExposed(Window):
         sleep(10)
     qtbot.stopForInteraction()
     

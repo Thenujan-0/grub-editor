@@ -3,12 +3,27 @@ import sys
 from time import sleep
 import os
 import subprocess
-import progress
-from worker import Worker , WorkerSignals
-from dialog import DialogUi
+import widgets.progress as progress
+from libs.worker import Worker , WorkerSignals
+from widgets.dialog import DialogUi
+from widgets.error_dialog import ErrorDialogUi
 
 
-PATH =os.path.dirname(os.path.realpath(__file__))
+class CustomProgressUi(progress.ProgressUi):
+    """ Parent window has to be set using the setParentWindow to make sure parent window  gets enabled when this window is closed """
+    
+    
+    def setParentWindow(self,MainWindow):
+        self.MainWindow=MainWindow
+    def closeEvent(self,event):
+        print('progress window is closing')
+        self.MainWindow.setEnabled(True)
+        event.accept()
+        
+
+
+#removing the /widgets part of the string
+PATH =os.path.dirname(os.path.realpath(__file__))[0:-8]
 print(PATH)
 
 
@@ -21,30 +36,46 @@ class ChrootUi(QtWidgets.QWidget):
         
 class ChrootAfterUi(QtWidgets.QWidget):
 
-    def __init__(self):
+    def __init__(self,MainWindow):
         super(ChrootAfterUi, self).__init__()
         uic.loadUi(f"{PATH}/ui/chroot_after.ui",self)
         # self.show()
         self.threadpool=QtCore.QThreadPool()
         self.progress_window=None
-        
-        
+        self.error_window=None
+        self.MainWindow=MainWindow
         
         self.btn_reinstall_grub_package.clicked.connect(self.btn_reinstall_grub_package_callback)
+    
+    def onOutput(self,output):
         
+        #! issue opening multiple progress windows at once can cause issues 
+            if self.progress_window is not None:
+                self.update_lbl_details(output)
+                
+            elif self.error_window is not None:
+                pass
+                
+            elif self.error_window is None:
+                self.error_window=ErrorDialogUi()
+                self.error_window.show()
+    
     def btn_reinstall_grub_package_callback(self):
         """ callback for btn_reinstall_grub_package 
             tries to reinstall grub package using pacman
         
         """
-        #todo check if there is internet access
+        
+        
+        #todo write tests to handle errors because of no  internet access error from pacman , pacman related errors etc
         
         def reinstall_grub_package(worker):
-            p=subprocess.Popen(['pkexec pacman -S grubas --noconfirm'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,shell=True)
+            p=subprocess.Popen(['pkexec pacman -S grub --noconfirm'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,shell=True)
             
             for line in p.stdout:
                 sys.stdout.write(line.decode()+'reading from stdout')
                 if "resolving dependencies..." in line.decode():
+                    print('emitted started signal chroot.py ')
                     worker.signals.started.emit()
                 worker.signals.output.emit(line.decode())
         
@@ -55,21 +86,21 @@ class ChrootAfterUi(QtWidgets.QWidget):
         
         
         def show_loading():
-            self.progress_window=progress.ProgressUi()
+            self.progress_window=CustomProgressUi()
             self.progress_window.lbl_status.setText('reinstalling grub package..')
             self.progress_window.show()
+            self.MainWindow.setEnabled(False)
+            self.progress_window.setParentWindow(self.MainWindow)
             
-        def error_handler():
-            print('recieved error')
-            self.reinstall_grub_package_error_dialog=DialogUi()
-            self.reinstall_grub_package_error_dialog.label.setText('An error occured while installing')
-            self.reinstall_grub_package_error_dialog.show()
+            #todo main window set enabled true when progress window is closed
+            
             
         def btn_close_callback():
-            self.close()
+            self.progress_window.close()
             
         def onResult(result):
-            ''' hide the loading window when process finishes '''
+            #todo hide the loading window when process finishes
+            
             if self.progress_window is not None: 
                 self.progress_window.lbl_status.setText('Finished reinstalling grub package successfully')
                 
@@ -81,15 +112,18 @@ class ChrootAfterUi(QtWidgets.QWidget):
                 #add a close button
                 self.btn_close= QtWidgets.QPushButton()
                 self.btn_close.setText('Close')
-                self.verticalLayout.addWidget(self.btn_close)
+                self.progress_window.verticalLayout.addWidget(self.btn_close)
                 self.btn_close.clicked.connect(btn_close_callback)
+            
+        
+                
+            
     
         
                 
         worker.signals.started.connect(show_loading)
-        worker.signals.error.connect(error_handler)
         worker.signals.result.connect(onResult)
-        worker.signals.output.connect(self.update_lbl_details)
+        worker.signals.output.connect(self.onOutput)
         
 
         

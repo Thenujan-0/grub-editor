@@ -3,12 +3,16 @@ check if the current grub.cfg is up to date with /etc/default/grub
 check if other operating systems are there by executing os prober and if it takes too long then use grub.cfg to find out
 and then if other operating systems are there instruct the user to use 0.0 instead of 0 in timeout
 show no snapshots found above the list widget if no snapshots were found
-create a dialog to show error messages
 add UEFI support
 
+if grub default has an invalid value then a Dialog is show but add a checkbox to allow the user to disable that dialog
+
+write tests for checks if error_dialog text of the label part in qt designer is in the value used in error_dialog.py
+
+dynamicaly set combobox item text with resize event so that no part if item text will be hidden
 
 
-possible issue : when grub-update hasnt been performed since change of an os so entries from grub.cfg are false
+
 
 check what happens when a dual boot os removed from hard drive but selected as default entry in grub
 

@@ -12,7 +12,7 @@ def getOs():
     with open('os-prober.txt','r') as f:
         output = f.read()
 
-    print(output)
+    # print(output)
 
     lines=output.splitlines()
     operating_systems=[]
@@ -30,7 +30,7 @@ def getOs():
             end_index=line[start_index:].index(':')+start_index
             # print(line[start_index])
             # print(line[end_index+start_index+1])
-            print(line[start_index:end_index])
+            # print(line[start_index:end_index])
             operating_systems.append(line[start_index:end_index])
     return operating_systems,partitions
         

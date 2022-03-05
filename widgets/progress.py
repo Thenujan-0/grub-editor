@@ -1,7 +1,7 @@
 from PyQt5 import QtWidgets,QtCore,QtGui,uic
 import sys
 import os
-import loading_bar
+import widgets.loading_bar as loading_bar
 
 class ProgressUi(QtWidgets.QMainWindow):
     def __init__(self):

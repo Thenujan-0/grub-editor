@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>576</width>
-    <height>200</height>
+    <width>604</width>
+    <height>297</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -23,6 +23,13 @@
        </property>
        <property name="wordWrap">
         <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="checkBox">
+       <property name="text">
+        <string>Never show this to me again</string>
        </property>
       </widget>
      </item>

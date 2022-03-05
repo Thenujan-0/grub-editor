@@ -17,6 +17,14 @@ class WorkerSignals(QtCore.QObject):
 
     result
         object data returned from processing, anything
+        
+    started
+        used when there is a first step to pass in the process has to be set to emit manually in the runner function
+    
+    output
+        emits everyline in stdout
+        
+
 
     '''
     finished = QtCore.pyqtSignal()
@@ -24,7 +32,6 @@ class WorkerSignals(QtCore.QObject):
     result = QtCore.pyqtSignal(object)
     output =QtCore.pyqtSignal(str)
     
-    #used when there is a first step to pass in the process
     started=QtCore.pyqtSignal() 
 
    
