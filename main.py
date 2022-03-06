@@ -1285,19 +1285,7 @@ class Ui(QtWidgets.QMainWindow):
             # printer(signal)
             signal.connect(new_handler)
             
-    def insertInto(self,layout,index,widget):
-        items=[]
-        for i in reversed(range(layout.count(),index)):
-            item =self.itemAt(i).widget()
-            item.setParent(None)
-            items.append(item)
-            # printer(item,'item')
-            
-        # printer('widget',widget)
-            
-        layout.addWidget(widget)
-        for i in reversed(range(len(items))):
-            layout.addWidget(items[i])
+    
 
     def comboBox_grub_default_on_current_index_change(self):
         try:

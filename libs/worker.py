@@ -1,4 +1,5 @@
-from PyQt5 import QtCore
+from PyQt5 import QtCore,QtWidgets
+
 import traceback
 import sys
 
@@ -33,7 +34,13 @@ class WorkerSignals(QtCore.QObject):
     output =QtCore.pyqtSignal(str)
     
     started=QtCore.pyqtSignal() 
-
+    
+    
+    #for testing purpose
+    click_button=QtCore.pyqtSignal(QtWidgets.QPushButton)
+    exec_str= QtCore.pyqtSignal(str)
+    quit_app= QtCore.pyqtSignal()
+    setText= QtCore.pyqtSignal(str)
    
 class Worker(QtCore.QRunnable):
     '''

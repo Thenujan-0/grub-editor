@@ -1,11 +1,23 @@
 from PyQt5 import QtWidgets,QtCore,QtGui,uic
 import sys
 import os
+
+PATH= os.path.dirname(os.path.realpath(__file__))
+
+
+if 'widgets' == PATH[-7:]:
+    print(PATH[0:-8])
+    sys.path.append(PATH[0:-8])
+    
 import widgets.loading_bar as loading_bar
+from libs.insert_into import insert_into
+
 
 class ProgressUi(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
+    
+
         self.centralwidget=QtWidgets.QWidget(self)
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
         self.verticalLayout=QtWidgets.QVBoxLayout()
@@ -32,6 +44,9 @@ class ProgressUi(QtWidgets.QMainWindow):
         self.lbl_details=None
         
         self.btn_show_details.clicked.connect(self.btn_show_details_callback)
+
+        
+
         
     def btn_show_details_callback(self):
         btn=self.sender()
@@ -47,10 +62,26 @@ class ProgressUi(QtWidgets.QMainWindow):
             self.lbl_details.setWordWrap(True)
             self.update_lbl_details()
             
-            self.verticalLayout_2.addWidget(self.lbl_details)
-            self.gridLayout_2.addLayout(self.verticalLayout_2, 0, 0, 1, 1)
-            self.scrollArea.setWidget(self.scrollAreaWidgetContents)
-            self.verticalLayout.addWidget(self.scrollArea)
+            #find the index of the button
+            for index in range(self.verticalLayout.count()):
+                item = self.verticalLayout.itemAt(index).widget()
+                if 'QPushButton' in item.__str__() and item.text()=='Show details':
+                    
+                    self.verticalLayout_2.addWidget(self.lbl_details)
+                    self.gridLayout_2.addLayout(self.verticalLayout_2, 0, 0, 1, 1)
+                    self.scrollArea.setWidget(self.scrollAreaWidgetContents)
+                    
+                    # if it is the last widget of the veritical layout
+                    if self.verticalLayout.count()-1 == index:
+                        
+                        self.verticalLayout.addWidget(self.scrollArea)
+                        
+                    #if it isnt the last widget of the verticalLayout
+                    else:
+                        insert_into(self.verticalLayout,index+1,self.scrollArea)
+                        break
+                    
+                    
             # lbl =QtWidgets.QLabel(self.centralwidget)
             
             # self.verticalLayout.addWidget(lbl)
@@ -58,9 +89,13 @@ class ProgressUi(QtWidgets.QMainWindow):
             btn.setText("Hide details")
             
         else:
-            self.verticalLayout.itemAt(3).widget().deleteLater()
             self.lbl_details=None
             btn.setText("Show details")
+            for index in range(self.verticalLayout.count()):
+                item = self.verticalLayout.itemAt(index).widget()
+                if 'QScrollArea' in item.__str__():
+                    item.deleteLater()
+                
     
     def update_lbl_details(self):
         ''' updates the lbl_details using the lbl_details_text if lbl_details is not None '''
@@ -69,7 +104,9 @@ class ProgressUi(QtWidgets.QMainWindow):
             
             
 if __name__=="__main__":
+    global app
     app = QtWidgets.QApplication([])
+    
     window = ProgressUi()
     window.show()
     app.exec_()
