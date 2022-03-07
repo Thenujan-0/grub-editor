@@ -10,7 +10,7 @@ if 'widgets' == PATH[-7:]:
     sys.path.append(PATH[0:-8])
     
 import widgets.loading_bar as loading_bar
-from libs.insert_into import insert_into
+from libs.qt_functools import insert_into
 
 
 class ProgressUi(QtWidgets.QMainWindow):
@@ -60,7 +60,8 @@ class ProgressUi(QtWidgets.QMainWindow):
             self.verticalLayout_2 = QtWidgets.QVBoxLayout()
             self.lbl_details = QtWidgets.QLabel(self.scrollAreaWidgetContents)
             self.lbl_details.setWordWrap(True)
-            self.update_lbl_details()
+            
+            self.lbl_details.setText(self.lbl_details_text)
             
             #find the index of the button
             for index in range(self.verticalLayout.count()):
@@ -97,8 +98,14 @@ class ProgressUi(QtWidgets.QMainWindow):
                     item.deleteLater()
                 
     
-    def update_lbl_details(self):
-        ''' updates the lbl_details using the lbl_details_text if lbl_details is not None '''
+    def update_lbl_details(self,text:str):
+        ''' updates the lbl_details adds the the string to the pre existing string in lbl_details
+            This doesnt add new lines
+        '''
+        
+        pre_text=self.lbl_details_text
+        self.lbl_details_text=pre_text+text
+        
         if self.lbl_details is not None:
             self.lbl_details.setText(self.lbl_details_text)
             

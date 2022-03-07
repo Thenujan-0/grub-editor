@@ -3,10 +3,25 @@ import sys
 from time import sleep
 import os
 import subprocess
+
+
+
+
+
+#removing the /widgets part of the string
+PATH =os.path.dirname(os.path.realpath(__file__))[0:-8]
+print(PATH)
+
+
+#to imports the widgets and libs
+sys.path.append(PATH)
+
 import widgets.progress as progress
 from libs.worker import Worker , WorkerSignals
 from widgets.dialog import DialogUi
 from widgets.error_dialog import ErrorDialogUi
+
+
 
 
 class CustomProgressUi(progress.ProgressUi):
@@ -20,12 +35,6 @@ class CustomProgressUi(progress.ProgressUi):
         self.MainWindow.setEnabled(True)
         event.accept()
         
-
-
-#removing the /widgets part of the string
-PATH =os.path.dirname(os.path.realpath(__file__))[0:-8]
-print(PATH)
-
 
 class ChrootUi(QtWidgets.QWidget):
     def __init__(self):
@@ -51,7 +60,7 @@ class ChrootAfterUi(QtWidgets.QWidget):
         
         #! issue opening multiple progress windows at once can cause issues 
             if self.progress_window is not None:
-                self.update_lbl_details(output)
+                self.progress_window.update_lbl_details(output)
                 
             elif self.error_window is not None:
                 pass
@@ -126,13 +135,7 @@ class ChrootAfterUi(QtWidgets.QWidget):
         worker.signals.output.connect(self.onOutput)
         
 
-        
-    def update_lbl_details(self,text:str):
-        ''' updates the lbl_details adds the the string to the pre existing string in lbl_details '''
-        pre_text=self.progress_window.lbl_details_text
-        
-        self.progress_window.lbl_details_text = pre_text+text
-        self.progress_window.update_lbl_details()
+
         
         
         

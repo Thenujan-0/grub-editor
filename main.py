@@ -20,7 +20,7 @@ import math
 
 import logging
 from threading import Thread
-
+from libs.qt_functools import reconnect
 from libs.worker import Worker
 from libs.os_prober import getOs
 from widgets import chroot
@@ -1272,18 +1272,7 @@ class Ui(QtWidgets.QMainWindow):
         
         
         
-    def reconnect(self,signal ,new_handler=None,old_handler=None):
-        try:
-            if old_handler is not None:
-                while True:
-                    signal.disconnect(old_handler)
-            else:
-                signal.disconnect()
-        except TypeError:
-            pass
-        if new_handler is not None:
-            # printer(signal)
-            signal.connect(new_handler)
+
             
     
 
@@ -1398,7 +1387,7 @@ class Ui(QtWidgets.QMainWindow):
             number =0
             clearLayout(self.VLayout_snapshot)
 
-            self.reconnect(self.btn_create_snapshot.clicked,self.btn_create_snapshot_callback)
+            reconnect(self.btn_create_snapshot.clicked,self.btn_create_snapshot_callback)
             # self.VLayout_snapshot.addWidget(self.btn_create_snapshot)
             # printer(len(self.lines))
             if len(self.lines) >0 and  self.lbl_no_snapshots:

@@ -23,9 +23,16 @@ import unittest
 class CustomWorkerSignals(WorkerSignals):
     ''' contains some signals specific to the ProgressUi '''
     update_lbl_details=QtCore.pyqtSignal(str)
+    
+    
+    #this will be emited with the name of the next function to call when a test case finishes
+    function_finished=QtCore.pyqtSignal(str)
 
-
-
+class CustomWorker(Worker):
+    def __init__(self,fn,*args,**kwargs):
+        super().__init__(fn,*args,**kwargs)
+        
+        self.signals=CustomWorkerSignals()
 
 
 
@@ -74,8 +81,7 @@ class TestProgress(ProgressUi,TestFunctions):
         
         print("Clicked THE HIDE DETAILS BUTTON ")
         worker.signals.click_button.emit(self.btn_show_details)
-        sleep(2)
-        
+        sleep(1)
         
         #add a close button to the widget
         
@@ -86,7 +92,6 @@ self.verticalLayout.addWidget(self.btn_close)
         """)
         print("added a close button")
         
-        sleep(2)
         
         worker.signals.click_button.emit(self.btn_show_details)
         sleep(2)
@@ -103,7 +108,9 @@ self.verticalLayout.addWidget(self.btn_close)
         print("clicked Hide details")
         sleep(2)
         
-        worker.signals.quit_app.emit()
+        worker.signals.function_finished.emit("test_update_lbl_details")
+        
+        # worker.signals.quit_app.emit()
         # sleep(1)
         
         
@@ -113,15 +120,55 @@ self.verticalLayout.addWidget(self.btn_close)
         
         #updating label
         
-    def test_update_lbl_details(self):
-        pass
+    def test_update_lbl_details(self,worker):
+        print('test_update_lbl_details has started')
+        sleep(2)
+        str1="assume that this is a big line of text from console ouput"
+        worker.signals.update_lbl_details.emit(str1)
+        sleep(1)
+        
+        print("checking  if lbl_details_text contains the right text")
+        self.utest.assertEqual(self.lbl_details_text,str1)
+        
+        print("clicked btn_show_details")
+        self.click_button(self.btn_show_details)
+        
+        sleep(1)
+        
+        print('Checking if lbl_details is now showing the right string')
+        self.utest.assertEqual(self.lbl_details.text(),str1)
+        
+        str2="\nThis is Another big text"
+        worker.signals.update_lbl_details.emit(str2)
+        
+        sleep(1)
+        print("check if the lbl_details now shows the correct string")
+        self.utest.assertEqual(str1+str2,self.lbl_details.text())
+        
+        
+        print("checking if clicking hide details and then show details cause any issues in lbl_details text")
+        self.click_button(self.btn_show_details)
+        sleep(1)
+        self.click_button(self.btn_show_details)
+        sleep(1)
+        self.utest.assertEqual(self.lbl_details.text(),str1+str2)
+        
+        
+        worker.signals.quit_app.emit()
+        
+        
+    def function_finished_callback(self,name_next_fn):
+        print('function_finished_callback was called')
+        exec_str="self.startWorker(self."+name_next_fn+")"
+        print(exec_str)
+        exec(exec_str)
         
     def startWorker(self,function):
         
             
         #passing None as argument to set worker to None so i can set it to worker in 
         # the following step
-        worker =Worker(function,worker=None)
+        worker =CustomWorker(function,worker=None)
         worker.kwargs['worker']=worker
         
         
@@ -130,15 +177,22 @@ self.verticalLayout.addWidget(self.btn_close)
         worker.signals.quit_app.connect(self.quit_app)
         worker.signals.finished.connect(self.worker_finished)
         worker.signals.exec_str.connect(self.exec_str)
+        # print(type(worker.signals),'my custom signal')
+        worker.signals.update_lbl_details.connect(self.update_lbl_details)
+        # worker.signals.function_finished.connect(self.function_finished_callback)
+        
         
     def worker_finished(self):
         print('worker finished')
-        
+        sleep(5)
+        app.quit()
+        # self.close()
+        # print('done')
+        # sys.exit(app.exec_)
     
     
     def quit_app(self):
-        app.quit()
-    
+        pass    
     
     
     def exec_str(self,string):
@@ -155,7 +209,7 @@ self.verticalLayout.addWidget(self.btn_close)
         
 def main(unittest_obj,run_string):
     global app;
-    app = QtWidgets.QApplication([])
+    app = QtWidgets.QApplication(sys.argv)
     global window;
     window = TestProgress(unittest_obj,run_string)
     window.show()
@@ -169,7 +223,9 @@ class UnitTest_(CustomTestCase):
         main(self,"self.startWorker(self.test_btn_show_details)")
     
     def test_lbl_details(self):
-        main(self,'')
+        print('started second test')
+        self.assertEqual(1,1)
+        # main(self,'self.startWorker(self.test_update_lbl_details)')
 
 if __name__ == '__main__':
     unittest.main()
