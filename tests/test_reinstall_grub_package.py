@@ -1,9 +1,14 @@
 import unittest
 
 import os,sys,inspect
+
+
+#stolen from stackoverflow or grepperchrome
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir) 
+
+
 import main
 import threading
 from PyQt5 import QtWidgets,QtCore
@@ -12,29 +17,14 @@ from time import sleep
 import pytest
 
 
-def test_grub_timeout_add_substract(qtbot):
+
+def test_btn_reinstall_grub(qtbot):
+    main.MainWindow=main.Ui()
+    mw=main.MainWindow
+    mw.tabWidget.setCurrentIndex(2) 
+
     
-    
-    Window = main.Ui()
-    qtbot.addWidget(Window)
-    
-    time_out_val =Window.ledit_grub_timeout.text()
-    print(time_out_val,'default grub_timeout_val')
-    
-    # click in the Greet button and make sure it updates the appropriate label
-    qtbot.mouseClick(Window.btn_add, QtCore.Qt.LeftButton)
-    assert Window.ledit_grub_timeout.text() == "21.0"
-    qtbot.mouseClick(Window.btn_substract, QtCore.Qt.LeftButton)
-    assert Window.ledit_grub_timeout.text()=='20.0'
-    
-    Window.tabWidget.setCurrentIndex(2) 
-    Window.show()
-    # qtbot.waitForWindowShown(Window)
-    # with qtbot.waitExposed(Window):
-        # pass
-    # sleep(1)
-    
-    lv=Window.chroot.listWidget
+    lv=mw.chroot.listWidget
     item =lv.item(0)
     rect = lv.visualItemRect(item)
     center = rect.center()
@@ -44,16 +34,10 @@ def test_grub_timeout_add_substract(qtbot):
     # assert lv.currentRow() == 0
 
     
-    qtbot.mouseClick(Window.chroot.listWidget.viewport(),QtCore.Qt.LeftButton,pos=center)
-    # Window.chroot.listWidget.item(2).click()
-    assert type( Window.tabWidget.currentWidget()).__name__ =='ChrootAfterUi'
-    currentWidget=Window.tabWidget.currentWidget()
+    qtbot.mouseClick(mw.chroot.listWidget.viewport(),QtCore.Qt.LeftButton,pos=center)
+    # mw.chroot.listWidget.item(2).click()
+    assert type( mw.tabWidget.currentWidget()).__name__ =='ChrootAfterUi'
+    currentWidget=mw.tabWidget.currentWidget()
     qtbot.mouseClick(currentWidget.btn_reinstall_grub_package,QtCore.Qt.LeftButton)
-    with qtbot.waitExposed(Window):
-        sleep(10)
-    qtbot.stopForInteraction()
+    sleep(2)
     
-
-# app =QtWidgets.QApplication([])
-# qtbot=QtBot()
-# test_hello(qtbot)

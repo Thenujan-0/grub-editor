@@ -51,6 +51,10 @@ class ProgressUi(QtWidgets.QMainWindow):
     def btn_show_details_callback(self):
         btn=self.sender()
         text =btn.text()
+        if self.verticalLayout.itemAt(3) is not None:
+            print(self.verticalLayout.itemAt(3).widget())
+        else:
+            print(None)
         if text =='Show details':
             self.scrollArea=QtWidgets.QScrollArea(self.centralwidget)
             self.scrollArea.setWidgetResizable(True)
@@ -89,14 +93,19 @@ class ProgressUi(QtWidgets.QMainWindow):
             
             btn.setText("Hide details")
             
-        else:
+        elif text=='Hide details':
             self.lbl_details=None
             btn.setText("Show details")
             for index in range(self.verticalLayout.count()):
                 item = self.verticalLayout.itemAt(index).widget()
                 if 'QScrollArea' in item.__str__():
                     item.deleteLater()
-                
+                    item.setParent(None)
+                    #delete the child widget of the QScrollArea
+                    item.widget().deleteLater()
+                    break
+        else:
+            print("unknown text in btn_show_details")            
     
     def update_lbl_details(self,text:str):
         ''' updates the lbl_details adds the the string to the pre existing string in lbl_details

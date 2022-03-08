@@ -266,8 +266,8 @@ class Ui(QtWidgets.QMainWindow):
         uic.loadUi(f'{PATH}/ui/main.ui',self)
         
         
-        print(app.font(),'default font')
-        print('------------------------')
+        # print(app.font(),'default font')
+        # print('------------------------')
         
         #to make sure that Main window is unaccesible when a child window (QWidget) is open
         # self.setWindowModality(QtCore.Qt.ApplicationModal)
@@ -380,7 +380,8 @@ class Ui(QtWidgets.QMainWindow):
         if self.chroot_status == 'before':
             self.chroot.deleteLater()
             self.tabWidget.removeTab(2)
-
+            
+            global MainWindow
             self.chroot_after=chroot.ChrootAfterUi(MainWindow)
             self.tabWidget.addTab(self.chroot_after,'Chroot')
             self.chroot_status='after'
@@ -1073,6 +1074,7 @@ class Ui(QtWidgets.QMainWindow):
             if view_default=='None':
                 
                 self.view_btn_win.show()
+                print('was called')
             elif view_default=='on_the_application_itself':
                 
                 self.view_btn_win.btn_on_the_application_itself_callback()

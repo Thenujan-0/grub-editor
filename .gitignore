@@ -10,5 +10,5 @@ test_json.py
 temp8.py
 PKGBUILD
 *.pyc
-__pycache__/
+__pycache__
 .qt_for_python/
