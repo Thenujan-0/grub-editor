@@ -26,15 +26,17 @@ def test_btn_view(qtbot):
     #mw stand for mainWindow
     mw=main.Ui()
     main.MainWindow=mw;
-    #todo check if get_preference("view_default") returns "None"
     
     #first find the view btn of the first snapshots
     #before that we need to create a snapshot if no snapshots exist
     if mw.VLayout_snapshot.itemAt(0) is  None:
         qtbot.mouseClick(mw.btn_create_snapshot, QtCore.Qt.LeftButton)
     
-    btn_view = mw.VLayout_snapshot.itemAt(0).layout().itemAt(1).widget()
-    print(btn_view)
+    btn_view = mw.VLayout_snapshot.itemAt(0).layout().itemAt(2).widget()
+    
+    #check if it is view button
+    assert btn_view.text()=='view'
+    
     qtbot.mouseClick(btn_view, QtCore.Qt.LeftButton)
     
     

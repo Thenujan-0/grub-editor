@@ -1063,7 +1063,7 @@ class Ui(QtWidgets.QMainWindow):
     #     self.setUiElements()
 
             
-            
+    
     def btn_view_callback(self,arg):
         try:
             global file_loc
@@ -1071,18 +1071,19 @@ class Ui(QtWidgets.QMainWindow):
             self.setUiElements(show_issues=True)
             view_default=get_preference('view_default')
             self.view_btn_win =ViewButtonUi(file_loc)
+            
             if view_default=='None':
-                
                 self.view_btn_win.show()
-                print('was called')
-            elif view_default=='on_the_application_itself':
                 
+            elif view_default=='on_the_application_itself':
                 self.view_btn_win.btn_on_the_application_itself_callback()
                 
             elif view_default=='default_text_editor':
                 self.view_btn_win.btn_default_text_editor_callback()
+                
             else:
                 printer('ERROR: unknown value for view_default on main.json',view_default)
+                
         except Exception as e:
             printer(str(e))
             printer(traceback.format_exc())

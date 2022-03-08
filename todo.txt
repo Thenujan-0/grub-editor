@@ -11,8 +11,9 @@ write tests for checks if error_dialog text of the label part in qt designer is 
 
 dynamicaly set combobox item text with resize event so that no part if item text will be hidden
 
+viewbutton callback window show the selected snapshot's name
 
-
+fix bug that causes the loading configuration from to change when default text editor is selected on view button 's new window
 
 check what happens when a dual boot os removed from hard drive but selected as default entry in grub
 
