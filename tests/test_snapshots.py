@@ -2,7 +2,7 @@ import sys
 import os
 from PyQt5 import QtWidgets,QtCore
 import subprocess
-
+from time import sleep
 PATH = os.path.dirname(os.path.realpath(__file__))
 #get the parent directory
 PATH = PATH[0:-5]
@@ -12,8 +12,7 @@ import main
 
 HOME=os.getenv("HOME")
 
-#delete the preferences file
-subprocess.run([f"rm {HOME}/.grub-editor/preferences/main.json"],shell=True)
+
 
 
 def test_btn_create_snapshot(qtbot):
@@ -37,10 +36,39 @@ def test_btn_view(qtbot):
     #check if it is view button
     assert btn_view.text()=='view'
     
-    qtbot.mouseClick(btn_view, QtCore.Qt.LeftButton)
+    #delete the preferences file
+    subprocess.run([f"rm {HOME}/.grub-editor/preferences/main.json"],shell=True)
     
+    qtbot.mouseClick(btn_view, QtCore.Qt.LeftButton)
     
     
     #check if btn_view_window is visible
     assert mw.view_btn_win.isVisible()
+    
+    mw.view_btn_win.close()
+    
+    
+    #now check if that view_btn_win opens when preference has a value 
+    main.set_preference("view_default","default_text_editor")
+    
+    qtbot.mouseClick(btn_view,QtCore.Qt.LeftButton)
+    assert not mw.view_btn_win.isVisible()
+    assert mw.comboBox_configurations.currentText() =='/etc/default/grub'
+    
+    #! only works when kate is default text editor if not test has to be changed
+    #might fail when kate takes too long to load
+    sleep(5)
+    windows= subprocess.check_output(["wmctrl -l "],shell=True).decode()
+    assert "2022-03-04_10:51:28  — Kate" in windows
+    
+    main.set_preference("view_default","on_the_application_itself")
+    
+    qtbot.mouseClick(btn_view,QtCore.Qt.LeftButton)
+    assert not mw.view_btn_win.isVisible()
+    assert mw.tabWidget.currentIndex() ==0
+    
+    assert mw.comboBox_configurations.currentText() =="2022-03-04_10:51:28"
+    
+    
+    
     

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>598</width>
-    <height>360</height>
+    <width>939</width>
+    <height>554</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -27,7 +27,7 @@
        <item>
         <widget class="QLabel" name="label_3">
          <property name="text">
-          <string>Chroot is accessing another operating system from this operating system.Grub-editor uses manjaro-chroot to chroot</string>
+          <string>Chroot is accessing another operating system from this operating system. Grub-editor uses manjaro-chroot to chroot</string>
          </property>
          <property name="wordWrap">
           <bool>true</bool>

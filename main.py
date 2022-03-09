@@ -25,7 +25,7 @@ from libs.worker import Worker
 from libs.os_prober import getOs
 from widgets import chroot
 from widgets.dialog import DialogUi
-
+from widgets.error_dialog import ErrorDialogUi
 
 
 file_loc='/etc/default/grub'
@@ -200,6 +200,7 @@ def get_preference(key):
     return value
 
 def set_preference(key,value):
+    
     subprocess.run([f'mkdir -p {HOME}/.grub-editor/preferences/'],shell=True)
     
     if os.path.exists(f'{HOME}/.grub-editor/preferences/main.json'):
@@ -209,6 +210,8 @@ def set_preference(key,value):
         # printer(type(dict))
         dict[key]=value
         file.close()
+    
+        
     
     pref_file = open(f'{HOME}/.grub-editor/preferences/main.json', "w")
     
@@ -349,23 +352,62 @@ class Ui(QtWidgets.QMainWindow):
         #add chroot to tab
 
 
-        self.chroot = chroot.ChrootUi()
-        self.chroot.setObjectName("chroot")
+        self.chroot = chroot.LoadingChrootUi()
         self.tabWidget.addTab(self.chroot, "Chroot")
-        self.chroot_status='before'
-        #update chroot tab
-        self.update_chroot_os()
+        self.chroot_status='loading'
+        
+        
+        #add the list widget part to the chroot tab
+        
+        # self.chroot.groupBox_3 = QtWidgets.QGroupBox(self.chroot)
+        # self.chroot.groupBox_3.setObjectName("groupBox_3")
+        # self.chroot.gridLayout_9 = QtWidgets.QGridLayout(self.chroot.groupBox_3)
+        # self.chroot.gridLayout_9.setObjectName("gridLayout_9")
+        # self.chroot.verticalLayout_3 = QtWidgets.QVBoxLayout()
+        # self.chroot.verticalLayout_3.setObjectName("verticalLayout_3")
+        # self.chroot.listWidget = QtWidgets.QListWidget(self.chroot.groupBox_3)
+        # self.chroot.listWidget.setObjectName("listWidget")
+        # self.chroot.verticalLayout_3.addWidget(self.chroot.listWidget)
+        # self.chroot.gridLayout_9.addLayout(self.chroot.verticalLayout_3, 1, 0, 1, 1)
+        # self.chroot.VLyout_chroot.addWidget(self.chroot.groupBox_3)
+        
+        #if chroot window has been build with the os-prober entries
+        self.chroot_os_initialized=False
+        
+        self.tabWidget.currentChanged.connect(self.tabWidget_current_changed)
+
+    def tabWidget_current_changed(self,index):
+        if index ==2 and not self.chroot_os_initialized:
+            # self.update_chroot_os()
+            pass
+    
 
     def update_chroot_os(self):
         """ add the available operating systems to chroot tab """
-        operating_systems,partitions=getOs()
+        
+        def onResult(result):
+            
+            operating_systems,partitions =result
+            if not operating_systems:
+                self.error_getOs=ErrorDialogUi()
+            self.error_getOs.set_error_title("Failed to get installed operating systems")
+            self.error_getOs.set_error_body("os-prober returned error prbably because another os-prober process hasn't exited yet.Please try again in few seconds ")
+            self.tabWidget.setCurrentIndex(0)
+            
+            for i,os in enumerate(operating_systems):
+                partition =partitions[i]
+                item=QtWidgets.QListWidgetItem(os+" on "+partition)
+                self.chroot.listWidget.addItem(item)
+            self.chroot.listWidget.itemClicked.connect(self.listWidget_itemClicked_callback)
 
-        for i,os in enumerate(operating_systems):
-            partition =partitions[i]
-            item=QtWidgets.QListWidgetItem(os+" on "+partition)
-            self.chroot.listWidget.addItem(item)
-        self.chroot.listWidget.itemClicked.connect(self.listWidget_itemClicked_callback)
-
+            self.chroot_os_initialized=True
+        
+        self.startWorker(getOs,onResult=onResult)
+        
+        
+        #failed to get operating_systems from os-prober probably because another os-prober is being executed
+        
+        
     def btn_exit_chroot_callback(self):
         self.chroot_after.deleteLater()
         self.tabWidget.removeTab(2)
@@ -662,9 +704,12 @@ class Ui(QtWidgets.QMainWindow):
                 index = file_loc.index('/snapshots/')
                 
                 snapshot_name= file_loc[index+11:]
-                # printer(snapshot_name,'name of the snap shot')
-                self.comboBox_configurations.setCurrentIndex(self.configurations.index(snapshot_name))
-            
+                
+                index=self.configurations.index(snapshot_name)
+                
+                self.comboBox_configurations.setCurrentIndex(index)
+                
+
             # printer('added all items to combo box configurations')
             self.comboBox_configurations.blockSignals(False)
             
@@ -1064,18 +1109,17 @@ class Ui(QtWidgets.QMainWindow):
 
             
     
-    def btn_view_callback(self,arg):
+    def btn_view_callback(self,snapshot_name):
         try:
-            global file_loc
-            file_loc= f'{HOME}/.grub-editor/snapshots/'+arg
-            self.setUiElements(show_issues=True)
+            new_loc= f'{HOME}/.grub-editor/snapshots/'+snapshot_name
             view_default=get_preference('view_default')
-            self.view_btn_win =ViewButtonUi(file_loc)
+            self.view_btn_win =ViewButtonUi(new_loc)
             
             if view_default=='None':
                 self.view_btn_win.show()
                 
             elif view_default=='on_the_application_itself':
+                
                 self.view_btn_win.btn_on_the_application_itself_callback()
                 
             elif view_default=='default_text_editor':
@@ -1150,7 +1194,7 @@ class Ui(QtWidgets.QMainWindow):
             printer('Error occured in btn_set_snapshot')
 
 
-    def startWorker(self,toCall,onFinish,onResult,*args):
+    def startWorker(self,toCall,onFinish=None,onResult=None,*args):
         try:
             """ arguments are funtion to run , funtion to call when finishes ,function to call with result if no errors occured, arugments of the first funtion """
             worker = Worker(toCall,*args)
@@ -1501,6 +1545,9 @@ class ViewButtonUi(QtWidgets.QDialog):
         subprocess.Popen([f'xdg-open \'{self.file_location}\''],shell=True)
         
     def btn_on_the_application_itself_callback(self):
+        global file_loc
+        file_loc= self.file_location
+        MainWindow.setUiElements(show_issues=False)
         MainWindow.tabWidget.setCurrentIndex(0)
         self.safe_close('on_the_application_itself')
         

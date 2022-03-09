@@ -12,6 +12,7 @@ import subprocess
 PATH =os.path.dirname(os.path.realpath(__file__))[0:-8]
 print(PATH)
 
+HOME =os.getenv("HOME")
 
 #to imports the widgets and libs
 sys.path.append(PATH)
@@ -35,6 +36,10 @@ class CustomProgressUi(progress.ProgressUi):
         self.MainWindow.setEnabled(True)
         event.accept()
         
+class LoadingChrootUi(QtWidgets.QWidget):
+    def __init__(self):
+        super(LoadingChrootUi, self).__init__()
+        uic.loadUi(f"{PATH}/ui/chroot_before.ui",self)
 
 class ChrootUi(QtWidgets.QWidget):
     def __init__(self):
@@ -55,7 +60,8 @@ class ChrootAfterUi(QtWidgets.QWidget):
         self.MainWindow=MainWindow
         
         self.btn_reinstall_grub_package.clicked.connect(self.btn_reinstall_grub_package_callback)
-    
+        self.btn_exit_chroot.clicked.connect(self.btn_exit_chroot_callback)
+        
     def onOutput(self,output):
         
         #! issue opening multiple progress windows at once can cause issues 
@@ -68,7 +74,12 @@ class ChrootAfterUi(QtWidgets.QWidget):
             elif self.error_window is None:
                 self.error_window=ErrorDialogUi()
                 self.error_window.show()
-    
+                
+                
+    def btn_exit_chroot_callback(self):
+        subprocess.run(['umount -a'],shell=True)
+        
+        
     def btn_reinstall_grub_package_callback(self):
         """ callback for btn_reinstall_grub_package 
             tries to reinstall grub package using pacman
@@ -79,7 +90,7 @@ class ChrootAfterUi(QtWidgets.QWidget):
         #todo write tests to handle errors because of no  internet access error from pacman , pacman related errors etc
         
         def reinstall_grub_package(worker):
-            p=subprocess.Popen(['pkexec pacman -S grub --noconfirm'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,shell=True)
+            p=subprocess.Popen([f'chroot /grub_editor_mount && pkexec pacman -S grub --noconfirm'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,shell=True)
             
             for line in p.stdout:
                 sys.stdout.write(line.decode()+'reading from stdout')

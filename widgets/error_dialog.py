@@ -1,8 +1,14 @@
 from PyQt5 import QtWidgets ,uic
 from PyQt5.QtWidgets import QDesktopWidget
 import os 
+import sys
 
 PATH = os.path.dirname(os.path.realpath(__file__))
+
+#get parent path
+PATH = PATH[0:-7]
+
+sys.path.append(PATH)
 
 class ErrorDialogUi(QtWidgets.QDialog):
 
@@ -38,7 +44,7 @@ class ErrorDialogUi(QtWidgets.QDialog):
         text = self.lbl_error_title.text()
         self.lbl_error_title.setText(text.replace('An error has occured',error_title))
         
-    def set_error_title(self,error_body):
+    def set_error_body(self,error_body):
         self.lbl_error_body.setText(error_body)
 
 
