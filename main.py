@@ -346,14 +346,14 @@ class Ui(QtWidgets.QMainWindow):
         self.checkBox_boot_default_entry_after.toggled.connect(self.checkBox_boot_default_entry_after_on_toggle)
         self.checkBox_show_menu.toggled.connect(self.checkBox_show_menu_on_toggle)
         self.btn_reset.clicked.connect(self.btn_reset_callback)
-        self.tabWidget.currentChanged.connect(self.tabWidget_currentChanged_callback)
         self.checkBox_look_for_other_os.clicked.connect(self.checkBox_look_for_other_os_callback)
+        self.tabWidget.currentChanged.connect(self.tabWidget_current_changed)
 
         #add chroot to tab
 
 
-        self.chroot = chroot.LoadingChrootUi()
-        self.tabWidget.addTab(self.chroot, "Chroot")
+        self.chroot_loading = chroot.ChrootLoadingUi()
+        self.tabWidget.addTab(self.chroot_loading, "Chroot")
         self.chroot_status='loading'
         
         
@@ -374,25 +374,28 @@ class Ui(QtWidgets.QMainWindow):
         #if chroot window has been build with the os-prober entries
         self.chroot_os_initialized=False
         
-        self.tabWidget.currentChanged.connect(self.tabWidget_current_changed)
 
     def tabWidget_current_changed(self,index):
         if index ==2 and not self.chroot_os_initialized:
-            # self.update_chroot_os()
+            self.update_chroot_os()
             pass
     
 
     def update_chroot_os(self):
         """ add the available operating systems to chroot tab """
         
+        self.chroot=chroot.ChrootUi()
+        
+        
         def onResult(result):
             
             operating_systems,partitions =result
             if not operating_systems:
                 self.error_getOs=ErrorDialogUi()
-            self.error_getOs.set_error_title("Failed to get installed operating systems")
-            self.error_getOs.set_error_body("os-prober returned error prbably because another os-prober process hasn't exited yet.Please try again in few seconds ")
-            self.tabWidget.setCurrentIndex(0)
+                self.error_getOs.set_error_title("Failed to get installed operating systems")
+                self.error_getOs.set_error_body("os-prober returned error prbably because another os-prober process hasn't exited yet.Please try again in few seconds ")
+                self.error_getOs.show()
+                self.tabWidget.setCurrentIndex(0)
             
             for i,os in enumerate(operating_systems):
                 partition =partitions[i]
@@ -401,8 +404,25 @@ class Ui(QtWidgets.QMainWindow):
             self.chroot.listWidget.itemClicked.connect(self.listWidget_itemClicked_callback)
 
             self.chroot_os_initialized=True
+            self.chroot_loading.deleteLater()
+            self.tabWidget.removeTab(2)
+            self.tabWidget.addTab(self.chroot,'Chroot')
+            self.chroot_status='before'
+            self.tabWidget.setCurrentIndex(2)
         
-        self.startWorker(getOs,onResult=onResult)
+        def onEveryLine(outputLine):
+            #todo complete the func
+            text =self.chroot_loading.lbl_os_prober_output.text()
+            self.chroot_loading.lbl_os_prober_output.setText(text+outputLine)
+        
+        # self.startWorker(getOs,onResult=onResult)
+        worker = Worker(getOs,onEveryLineSignal=None)
+        worker.kwargs['onEveryLineSignal']=worker.signals.output
+        
+        worker.signals.result.connect(onResult)
+        worker.signals.output.connect(onEveryLine)
+        self.threadpool.start(worker)
+        
         
         
         #failed to get operating_systems from os-prober probably because another os-prober is being executed
@@ -411,16 +431,16 @@ class Ui(QtWidgets.QMainWindow):
     def btn_exit_chroot_callback(self):
         self.chroot_after.deleteLater()
         self.tabWidget.removeTab(2)
-        self.chroot=chroot.ChrootUi()
+        # self.chroot=chroot.ChrootUi()
         self.tabWidget.addTab(self.chroot,'Chroot')
         self.chroot_status='before'
-        self.update_chroot_os()
+        # self.update_chroot_os()
         self.tabWidget.setCurrentIndex(2)
 
     def listWidget_itemClicked_callback(self, item):
         print(item.text())
         if self.chroot_status == 'before':
-            self.chroot.deleteLater()
+            # self.chroot.deleteLater()
             self.tabWidget.removeTab(2)
             
             global MainWindow
@@ -440,14 +460,6 @@ class Ui(QtWidgets.QMainWindow):
             self.tabWidget.addTab(self.chroot,'Chroot')
             self.chroot_status='before'
 
-    def tabWidget_currentChanged_callback(self,index):
-        # print('index of tab is ',index)
-        if index==2:
-            def check_os_prober():
-                pass
-                out = subprocess.check_output(['pkexec os-prober'],shell=True).decode()
-                print(out)
-            #! todo here use worker to checkthe output and then send a signal once it finishes it
 
 
     def ledit_grub_timeout_callback(self):

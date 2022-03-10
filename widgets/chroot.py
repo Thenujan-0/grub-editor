@@ -36,10 +36,10 @@ class CustomProgressUi(progress.ProgressUi):
         self.MainWindow.setEnabled(True)
         event.accept()
         
-class LoadingChrootUi(QtWidgets.QWidget):
+class ChrootLoadingUi(QtWidgets.QWidget):
     def __init__(self):
-        super(LoadingChrootUi, self).__init__()
-        uic.loadUi(f"{PATH}/ui/chroot_before.ui",self)
+        super(ChrootLoadingUi, self).__init__()
+        uic.loadUi(f"{PATH}/ui/chroot_loading.ui",self)
 
 class ChrootUi(QtWidgets.QWidget):
     def __init__(self):

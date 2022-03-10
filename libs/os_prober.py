@@ -6,8 +6,11 @@ from tracemalloc import start
 # output=subprocess.check_output(['pkexec os-prober'],shell=True).decode()
 # print(output)
 
-def getOs():
-    """ returns list:operating_systems list:partitions """
+def getOs(onEveryLineSignal=None):
+    """
+    onEveryLineSignal:a pyqt signal that will be emitted on everyline of stdout
+    returns list:operating_systems list:partitions 
+    """
 
     # with open('os-prober.txt','r') as f:
     #     output = f.read()
@@ -17,7 +20,13 @@ def getOs():
     
     output = subprocess.Popen(['pkexec os-prober'],shell=True,stdout =subprocess.PIPE,stderr=subprocess.STDOUT)
     for line_ in output.stdout:
+        
         line=line_.decode()
+        
+        #emit a signal if it was passed
+        if  onEveryLineSignal:
+            onEveryLineSignal.emit(line)
+        
         print('reading from stdout',line)
         if "rmdir: failed to remove '/var/lib/os-prober/mount': Device or resource busy" in line:
             print('found error')
