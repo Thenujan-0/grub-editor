@@ -1,12 +1,9 @@
 import subprocess
 from time import sleep
 import re
-from tracemalloc import start
 
-# output=subprocess.check_output(['pkexec os-prober'],shell=True).decode()
-# print(output)
 
-def getOs(onEveryLineSignal=None):
+def get_os(on_every_line=None):
     """
     onEveryLineSignal:a pyqt signal that will be emitted on everyline of stdout
     returns list:operating_systems list:partitions 
@@ -18,15 +15,15 @@ def getOs(onEveryLineSignal=None):
     operating_systems=[]
     partitions=[]
     
-    output = subprocess.Popen(['pkexec os-prober'],shell=True,stdout =subprocess.PIPE,stderr=subprocess.STDOUT)
+    output = subprocess.Popen(['sudo os-prober'],shell=True,stdout =subprocess.PIPE,stderr=subprocess.STDOUT)
     for line_ in output.stdout:
-        
+        output.stdout.flush()
         line=line_.decode()
         
-        #emit a signal if it was passed
-        if  onEveryLineSignal:
-            onEveryLineSignal.emit(line)
-        
+        #execute a funtion if it was passed as argument
+        if  on_every_line:
+            on_every_line(line)
+            
         print('reading from stdout',line)
         if "rmdir: failed to remove '/var/lib/os-prober/mount': Device or resource busy" in line:
             print('found error')

@@ -17,12 +17,11 @@ import traceback
 import json
 import random
 import math
-
+import zmq
 import logging
 from threading import Thread
 from libs.qt_functools import reconnect
 from libs.worker import Worker
-from libs.os_prober import getOs
 from widgets import chroot
 from widgets.dialog import DialogUi
 from widgets.error_dialog import ErrorDialogUi
@@ -383,47 +382,87 @@ class Ui(QtWidgets.QMainWindow):
 
     def update_chroot_os(self):
         """ add the available operating systems to chroot tab """
-        
+        pid =os.getpid()
+        subprocess.Popen([f'pkexec python3 {PATH}/libs/chrooter.py -p {pid}'],shell=True)
         self.chroot=chroot.ChrootUi()
         
         
         def onResult(result):
             
-            operating_systems,partitions =result
-            if not operating_systems:
-                self.error_getOs=ErrorDialogUi()
-                self.error_getOs.set_error_title("Failed to get installed operating systems")
-                self.error_getOs.set_error_body("os-prober returned error prbably because another os-prober process hasn't exited yet.Please try again in few seconds ")
-                self.error_getOs.show()
-                self.tabWidget.setCurrentIndex(0)
-            
-            for i,os in enumerate(operating_systems):
-                partition =partitions[i]
-                item=QtWidgets.QListWidgetItem(os+" on "+partition)
-                self.chroot.listWidget.addItem(item)
-            self.chroot.listWidget.itemClicked.connect(self.listWidget_itemClicked_callback)
+            #somehow this funtion gets called with None as arg still havnt figured out how 
+            if result is not None:
+                result=eval(result)
+                operating_systems,partitions =result
+                if not operating_systems:
+                    self.error_getOs=ErrorDialogUi()
+                    self.error_getOs.set_error_title("Failed to get installed operating systems")
+                    self.error_getOs.set_error_body("os-prober returned error prbably because another os-prober process hasn't exited yet.Please try again in few seconds ")
+                    self.error_getOs.show()
+                    self.tabWidget.setCurrentIndex(0)
+                
+                for i,os in enumerate(operating_systems):
+                    partition =partitions[i]
+                    item=QtWidgets.QListWidgetItem(os+" on "+partition)
+                    self.chroot.listWidget.addItem(item)
+                self.chroot.listWidget.itemClicked.connect(self.listWidget_itemClicked_callback)
 
-            self.chroot_os_initialized=True
-            self.chroot_loading.deleteLater()
-            self.tabWidget.removeTab(2)
-            self.tabWidget.addTab(self.chroot,'Chroot')
-            self.chroot_status='before'
-            self.tabWidget.setCurrentIndex(2)
+                self.chroot_os_initialized=True
+                self.chroot_loading.deleteLater()
+                self.tabWidget.removeTab(2)
+                self.tabWidget.addTab(self.chroot,'Chroot')
+                self.chroot_status='before'
+                self.tabWidget.setCurrentIndex(2)
         
         def onEveryLine(outputLine):
-            #todo complete the func
             text =self.chroot_loading.lbl_os_prober_output.text()
             self.chroot_loading.lbl_os_prober_output.setText(text+outputLine)
         
-        # self.startWorker(getOs,onResult=onResult)
-        worker = Worker(getOs,onEveryLineSignal=None)
-        worker.kwargs['onEveryLineSignal']=worker.signals.output
+        def recieve_os(worker):
+
+    
+            context=zmq.Context()
+            socket=context.socket(zmq.REQ)
+    
+            socket.connect("tcp://localhost:5556")
+    
+            #send  request asking for operating systems and partitions
+            
+            #we are going to ask again and again until it finishes every line in output of 
+            # while True:
+                
+            socket.send(b"get_os")
+            
+            while True:
+                message= socket.recv().decode()
+                words= message.split()
+                space_index=message.find(' ')
+                if words[0]=='partial':
+                    print('emiting on line')
+                    worker.signals.output.emit(message[space_index+1:])
+                    # if message=='finished':
+                        # break
+                elif words[0]=='final':
+                    print('emitting result')
+                    worker.signals.result.emit(message[space_index+1:])
+                    break
+                
+                else:
+                    print("Error recieved message from chrooter is in unhandled case")
+
+                socket.send(b'recieved')
+            print('broke out from the message loop')
+            # if message is not None:
+            #     worker.signals.result.emit(message)
+            # print(message,'message')
+
+        worker = Worker(recieve_os,worker=None)
+        worker.kwargs['worker']=worker
         
         worker.signals.result.connect(onResult)
         worker.signals.output.connect(onEveryLine)
         self.threadpool.start(worker)
         
-        
+        self.chroot_os_initialized=True
         
         #failed to get operating_systems from os-prober probably because another os-prober is being executed
         
@@ -439,6 +478,16 @@ class Ui(QtWidgets.QMainWindow):
 
     def listWidget_itemClicked_callback(self, item):
         print(item.text())
+        partition = item.text()[-9:]
+        print(partition)
+        context =zmq.Context()
+        socket = context.socket(zmq.REQ)
+        socket.connect('tcp://localhost:5556')
+        socket.send(bytes(f'chroot {partition}','ascii'))
+        socket.recv()
+        
+        
+        
         if self.chroot_status == 'before':
             # self.chroot.deleteLater()
             self.tabWidget.removeTab(2)
@@ -1042,30 +1091,18 @@ class Ui(QtWidgets.QMainWindow):
         self.recommendations=[]
         self.recmds_fixes=[]
         grub_timeout_value=self.ledit_grub_timeout.text()
-        interrupt=0
-        # sleep(5)
-        # if safe:
+        
         if self.checkBox_boot_default_entry_after.isChecked() and grub_timeout_value=='0':
             # self.ledit_grub_timeout.setText('Use 0.0 instead of 0 ')
             # self.ledit_grub_timeout.selectAll()
             # self.ledit_grub_timeout.setFocus()
-            self.recommendations.append('If you are doing dual boot it is preffered to use 0.0 instead of 0 as timeout')
+            self.recommendations.append('If you are doing dual boot it is preferred to use 0.0 instead of 0 as timeout')
             def temp():
                 self.ledit_grub_timeout.setText('0.0')
             self.recmds_fixes.append(temp)
 
 
-        elif self.checkBox_boot_default_entry_after.isChecked() :
-            try:
-                float(grub_timeout_value)
-                #? kinda dead code here
-            except Exception as e:
-                interrupt+=1
-                printer(e)
-                # self.lbl_status.setText('not a number error')
-                # self.set_errors.append('')
-                self.ledit_grub_timeout.selectAll()
-                self.ledit_grub_timeout.setFocus()
+       
         
         
         if not (self.verticalLayout_2.itemAt(1) and isinstance(self.verticalLayout_2.itemAt(1),QtWidgets.QHBoxLayout)):
@@ -1103,7 +1140,7 @@ class Ui(QtWidgets.QMainWindow):
         
         # printer(interrupt,'interrupt')
         if not unsafe:
-            if not interrupt and len(self.recommendations)==0:
+            if  len(self.recommendations)==0:
                 self.saveConfs()
             if len(self.recommendations)>0:
                 self.set_recommendations_window=SetRecommendations(self.recommendations,self.recmds_fixes)
