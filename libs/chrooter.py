@@ -6,7 +6,7 @@ import zmq
 from  os_prober import get_os
 import argparse
 import threading
-
+import sys
 parser =argparse.ArgumentParser()
 parser.add_argument('-p','--pid',help='pid of parent process')
 
@@ -18,15 +18,14 @@ parent_pid =args.pid
 print('pid of parent process is',parent_pid)
 
 def start_chroot(partition,destination='/grub_editor_mount'):
-
-
+    
     subprocess.run([f'mkdir -p {destination}'],shell=True)
 
     print(f"mount {partition} {destination}")
-    subprocess.check_output([f"mount {partition} {destination}"],shell=True)
-    subprocess.check_output([f"mount --bind /sys {destination}/sys"],shell=True)
-    subprocess.check_output([f"mount --bind /proc {destination}/proc"],shell=True)
-    subprocess.check_output([f"mount --bind /dev {destination}/dev"],shell=True)
+    subprocess.run([f"mount {partition} {destination}"],shell=True)
+    subprocess.run([f"mount --bind /sys {destination}/sys"],shell=True)
+    subprocess.run([f"mount --bind /proc {destination}/proc"],shell=True)
+    subprocess.run([f"mount --bind /dev {destination}/dev"],shell=True)
 
     #cp /etc/resolv.conf to get internet connection inside chroot
     resolv_path ='/etc/resolv.conf'
@@ -43,7 +42,6 @@ def on_every_line(text):
 context = zmq.Context()
 socket = context.socket(zmq.REP)
 socket.bind("tcp://*:5556")
-print('server running')
 
 def is_parent_running():
     try:
@@ -62,7 +60,37 @@ threading.Thread(target=die_when_parent_dies).start()
 def on_every_line(text):
     socket.send(bytes('partial '+text,'ascii'))
     socket.recv()
-    pass
+
+
+
+def reinstall_grub_package():
+    p=subprocess.Popen([f'chroot /grub_editor_mount && pkexec pacman -S grub --noconfirm'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,shell=True)
+    
+    
+    #used to determine if installation went successfully
+    success=None
+    
+    for line in p.stdout:
+        sys.stdout.write(line.decode()+'reading from stdout')
+        if "resolving dependencies..." in line.decode():
+            print('emitted started signal chroot.py ')
+            #todo use some message  to let the client know that it started successfully
+            #else inform the user that it failed
+            socket.send(b"started reinstalling successfully")
+            success=True
+            socket.recv()
+        socket.send(bytes("reinstall_output "+line.decode()))
+        socket.recv()
+            
+        for line in p.stdout:
+            sys.stdout.write(line.decode()+'reading from stdout')
+        if "resolving dependencies..." in line.decode():
+            print('emitted started signal chroot.py ')
+    if success:
+        socket.send(b"finished reinstalling grub package")
+    else:
+        socket.send(b"reinstalling grub package failed")
+# todo here
 
 while True:
     message=socket.recv().decode()
@@ -77,6 +105,8 @@ while True:
         start_chroot(partition)
         print('client has asked server to chroot')
         socket.send(b"started chroot")
+    elif words[0]=='reinstall_grub_package':
+        reinstall_grub_package()
     else:
         socket.send(b"unknown")
     print('server is running')
