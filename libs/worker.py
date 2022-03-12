@@ -36,11 +36,7 @@ class WorkerSignals(QtCore.QObject):
     started=QtCore.pyqtSignal() 
     
     
-    #for testing purpose
-    click_button=QtCore.pyqtSignal(QtWidgets.QPushButton)
-    exec_str= QtCore.pyqtSignal(str)
-    quit_app= QtCore.pyqtSignal()
-    setText= QtCore.pyqtSignal(str)
+    
    
 class Worker(QtCore.QRunnable):
     '''
