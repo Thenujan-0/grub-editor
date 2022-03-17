@@ -1,4 +1,6 @@
 #!/usr/bin/python
+from pickle import TRUE
+from venv import create
 from PyQt5 import QtCore ,QtWidgets, uic,QtGui
 from PyQt5.QtWidgets import QMainWindow, QLabel
 from PyQt5.QtWidgets import QGridLayout, QWidget, QDesktopWidget
@@ -6,6 +8,7 @@ from PyQt5.QtWidgets import QGridLayout, QWidget, QDesktopWidget
 
 import sys
 from functools import partial
+import re
 import subprocess
 import threading
 from datetime import datetime as dt
@@ -127,21 +130,28 @@ def initialize_temp_file(file_path):
 
 
 def setValue(name,val):
-    """ writes the changes to ~/.cache/grub-editor/temp.txt call initialize_temp_file before start writing to temp.txt"""
+    """ writes the changes to ~/.cache/grub-editor/temp.txt. call initialize_temp_file before start writing to temp.txt
+    call self.saveConfs or cp the file from cache to original to finalize the changes
+    """
     target_file=f'{HOME}/.cache/grub-editor/temp.txt'
 
 
 
     if name[-1] != '=':
-        raise Exception("name passed for getvalue doesnt contain = as last character")
+        raise Exception("name passed for setValue doesnt contain = as last character")
     
     with open(target_file,'r') as file:
         printer('file_loc',file_loc)
         to_write_data =file.read()
+    
+    #find the starting index of the string that we are looking for    
     start_index =to_write_data.find(name)
+    
+    #find the end index of the string we are looking for
     end_index =to_write_data[start_index+len(name):].find('\n')+start_index+len(name)
     
     to_write_data = to_write_data.replace(name+to_write_data[start_index+len(name):end_index],name+str(val))
+    print('setting value',val)
     lines = to_write_data.splitlines()
     for line in lines:
         if name in line:
@@ -359,7 +369,14 @@ class Ui(QtWidgets.QMainWindow):
         #add the list widget part to the chroot tab
         
         # self.chroot.groupBox_3 = QtWidgets.QGroupBox(self.chroot)
-        # self.chroot.groupBox_3.setObjectName("groupBox_3")
+        # self.chroot.groupBox_3.setObjectName("groupBox_3")    # random_number = str(random())
+    # keyboard = [
+    #             [InlineKeyboardButton('You lost' , callback_data='callback_1')],
+    #             [InlineKeyboardButton('Click button 1 ' + random_number, callback_data='callback_2')]
+    #         ]
+
+    # reply_markup = InlineKeyboardMarkup(keyboard)
+    # update.callback_query.edit_message_reply_markup(reply_markup)
         # self.chroot.gridLayout_9 = QtWidgets.QGridLayout(self.chroot.groupBox_3)
         # self.chroot.gridLayout_9.setObjectName("gridLayout_9")
         # self.chroot.verticalLayout_3 = QtWidgets.QVBoxLayout()
@@ -377,14 +394,29 @@ class Ui(QtWidgets.QMainWindow):
     def tabWidget_current_changed(self,index):
         if index ==2 and not self.chroot_os_initialized:
             self.update_chroot_os()
-            pass
     
 
     def update_chroot_os(self):
         """ add the available operating systems to chroot tab """
         pid =os.getpid()
-        subprocess.Popen([f'pkexec python3 {PATH}/libs/chrooter.py -p {pid}'],shell=True)
+        server_p=subprocess.Popen([f'pkexec python3 {PATH}/libs/chrooter.py -p {pid}'],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,shell=True)
         self.chroot=chroot.ChrootUi()
+        
+        def handle_server_p_error():
+            self.chroot_os_initialized= False
+            #todo tell the user that authentication wasnt finished sucessfully
+            
+        def check_server_p_out(worker):
+            ''' find out if authentication was cancelled in pkexec '''
+            for line in server_p.stdout:
+                if "Error executing command as another user: Not authorized" in line.decode():
+                    worker.signals.error.emit(())
+                print('line is ',line.decode())
+                break
+        worker1 = Worker(check_server_p_out,worker=None)
+        worker1.kwargs['worker']=worker1
+        worker1.signals.error.connect(handle_server_p_error)    
+        self.threadpool.start(worker1)
         
         
         def onResult(result):
@@ -448,7 +480,7 @@ class Ui(QtWidgets.QMainWindow):
                 
                 else:
                     print("Error recieved message from chrooter is in unhandled case")
-
+                    print(message,'is the message recieved from chrooter')
                 socket.send(b'recieved')
             print('broke out from the message loop')
             # if message is not None:
@@ -493,7 +525,7 @@ class Ui(QtWidgets.QMainWindow):
             self.tabWidget.removeTab(2)
             
             global MainWindow
-            self.chroot_after=chroot.ChrootAfterUi(MainWindow)
+            self.chroot_after=chroot.ChrootAfterUi(MainWindow,partition)
             self.tabWidget.addTab(self.chroot_after,'Chroot')
             self.chroot_status='after'
             
@@ -669,12 +701,8 @@ class Ui(QtWidgets.QMainWindow):
             try:
                 self.comboBox_grub_default.setCurrentIndex(self.all_entries.index(grub_default_val))    
             except ValueError:
-                print(traceback.format_exc())
-                if show_invalid_default:
-                    self.dialog_invalid_default_entry=DialogUi(btn_cancel=False)
-                    self.dialog_invalid_default_entry.label.setText("/etc/grub/default currently has an invalid default entry")
-                    self.dialog_invalid_default_entry.show()
-
+                
+                
                 #add the invalid entry to the combo box
                 invalid_value=getValue('GRUB_DEFAULT=',self.issues)
                 if invalid_value[0]=='"':
@@ -682,6 +710,9 @@ class Ui(QtWidgets.QMainWindow):
                 if invalid_value[-1]=='"':
                     invalid_value=invalid_value[:-1]
 
+                
+                #concistency iun showing entries
+                invalid_value= invalid_value.replace(">"," >")
                 
                 #check if it already exists in the grub_default comboBox
                 if invalid_value not in self.all_entries:
@@ -695,6 +726,84 @@ class Ui(QtWidgets.QMainWindow):
                 else:
                     index =self.all_entries.index(invalid_value)
                     self.comboBox_grub_default.setCurrentIndex(index)
+                
+                
+                def create_win(btn_cancel=False):
+                    print(btn_cancel)
+                    self.dialog_invalid_default_entry=DialogUi(btn_cancel=btn_cancel)
+                    self.dialog_invalid_default_entry.label.setText("/etc/grub/default currently has an invalid default entry")
+                    self.dialog_invalid_default_entry.show()
+                
+                
+                #find out if created a unique dialog_window
+                unique_dialog_win= False
+                
+                if show_invalid_default:
+                    index = invalid_value.find('(Kernel: ')
+                    for value in self.all_entries:
+                        
+                        if invalid_value[:index]== value[:index]:
+                            
+                            pattern=r'\d.\d+'
+                            krnl_major_vrsn=re.search(pattern,invalid_value).group(0)
+                            krnl_major_vrsn2 = re.search(pattern,value).group(0)
+                            print(value ,krnl_major_vrsn2,krnl_major_vrsn)
+                            if krnl_major_vrsn2 == krnl_major_vrsn:
+                                print('this value passed krnl_major_vrsn check',value)
+                                #check if fallback initramfs
+                                #todo find out why this returns unexpected value
+                                # condition =   ('fallback initramfs)' in value ) ^ ('fallback intramfs)' in invalid_value )
+                                #to avoid some unexpected behavior by python
+                                first =('fallback initramfs)' in value )
+                                second = ('fallback initramfs)' in invalid_value )
+                                condition = not (first ^ second)
+                                print(condition,'condition for this value')
+                                print(value!=invalid_value,'value not equal to invalidvalue')
+                                
+                                
+                                
+                                if condition and (value != invalid_value):
+                                    print('the right one ',invalid_value,value)
+                                    crct_value =value
+                                    
+                                    create_win(True)
+                                    dwin = self.dialog_invalid_default_entry
+                                    dwin.btn_ok.setText('Fix')
+                                    dwin.label.setText('etc/default/grub current has an invalid default entry. It is because of a kernel update . Do you want Grub editor to fix it for you?')
+                                    
+                                    
+                                    def fix():
+                                        initialize_temp_file('/etc/default/grub')
+                                        print(value,'value--------------------------')
+                                        
+                                        
+                                        if '>' in crct_value:
+                                            front_part=crct_value[:crct_value.find(' >')]
+                                            last_part=crct_value[crct_value.find('>'):]
+                                            print(front_part,last_part)
+                                            to_write='"'+front_part+last_part+'"'
+                                            setValue('GRUB_DEFAULT=',to_write)
+                                            # printer('called:''GRUB_DEFAULT=',to_write)
+                                            # printer(to_write+'part to be written')
+                                        else:
+                                            setValue('GRUB_DEFAULT=','\"'+crct_value+'\"')
+                                        
+                                        
+                                        
+                                        # setValue("GRUB_DEFAULT=",crct_value)
+                                        print('set grub default to the correct one')
+                                        self.show_saving()
+                                        self.saveConfs()
+                                        dwin.close()
+                                        
+                                    dwin.btn_ok.clicked.connect(fix)
+                                    unique_dialog_win =True
+                                    
+                                    
+                if not unique_dialog_win:
+                    create_win()
+
+
 
     def get_comboBox_grub_default(self):
         """returns the value comboBox grub_default should have"""
@@ -707,7 +816,7 @@ class Ui(QtWidgets.QMainWindow):
         grub_default_val=grub_default_val.replace('>',' >')
         return grub_default_val
                 
-    def setUiElements(self,reload_confs=True,show_issues=False):
+    def setUiElements(self,reload_confs=True,show_issues=True):
         """reloads the ui elements that should be reloaded
             when show issues is true it will show a dialog if the grub default value is invalid
         
@@ -876,7 +985,7 @@ class Ui(QtWidgets.QMainWindow):
 
     def saveConfs(self):
         """ copies the configuration file from cache to the target(/etc/default/grub) """
-        self.saveConfsToCache()
+        
 
         def final(self):
             try:
@@ -919,17 +1028,7 @@ class Ui(QtWidgets.QMainWindow):
                                 pass
                     break
 
-                    # if self.lbl_details is not None:
-                    #     for line in process.stdout:
-                    #         sys.stdout.write(line.decode())
-                    #         try:
-                    #             last = self.lbl_details.text()
-                    #             printer('last is ',last)
-                    #             self.lbl_details.setText(last+line.decode())
-                    #         except:
-                    #             printer('looks like label was deleted')
-                            
-                    #     break
+
                 if not authentication_error:
                     self.lbl_status.setText('Saved successfully')
                 else:
@@ -1081,35 +1180,9 @@ class Ui(QtWidgets.QMainWindow):
 
                 
             btn.setText('Show Details')
-    
-    def btn_set_callback(self,unsafe=False):
-
-        """ if argument is true then it checks configurations for recommendations and errors """
-
-        #todo check if the interrupt variable usage in here actually does what i expect
-
-        self.recommendations=[]
-        self.recmds_fixes=[]
-        grub_timeout_value=self.ledit_grub_timeout.text()
-        
-        if self.checkBox_boot_default_entry_after.isChecked() and grub_timeout_value=='0':
-            # self.ledit_grub_timeout.setText('Use 0.0 instead of 0 ')
-            # self.ledit_grub_timeout.selectAll()
-            # self.ledit_grub_timeout.setFocus()
-            self.recommendations.append('If you are doing dual boot it is preferred to use 0.0 instead of 0 as timeout')
-            def temp():
-                self.ledit_grub_timeout.setText('0.0')
-            self.recmds_fixes.append(temp)
-
-
-       
-        
-        
+    def show_saving(self):
         if not (self.verticalLayout_2.itemAt(1) and isinstance(self.verticalLayout_2.itemAt(1),QtWidgets.QHBoxLayout)):
-            if self.verticalLayout_2.itemAt(2) is not None:
-                # printer('yes',isinstance(self.verticalLayout_2.itemAt(2).widget(),QtWidgets.QHBoxLayout))
-                pass
-            # printer(self.verticalLayout_2.itemAt(1))
+    
             #create a label to show user that saving
             self.lbl_status= QtWidgets.QLabel()
             self.lbl_status.setText('saving do not close')
@@ -1136,16 +1209,44 @@ class Ui(QtWidgets.QMainWindow):
         else:
             self.lbl_status.setText('saving do not close')
             self.lbl_status.setStyleSheet('color:#03fc6f;')
+            
+            
+    def btn_set_callback(self,unsafe=False):
+
+        """ if argument is true then it checks configurations for recommendations and errors """
+
+        #todo check if the interrupt variable usage in here actually does what i expect
+
+        self.recommendations=[]
+        self.recmds_fixes=[]
+        grub_timeout_value=self.ledit_grub_timeout.text()
         
+        if self.checkBox_boot_default_entry_after.isChecked() and grub_timeout_value=='0':
+            # self.ledit_grub_timeout.setText('Use 0.0 instead of 0 ')
+            # self.ledit_grub_timeout.selectAll()
+            # self.ledit_grub_timeout.setFocus()
+            self.recommendations.append('If you are doing dual boot it is preferred to use 0.0 instead of 0 as timeout')
+            def temp():
+                self.ledit_grub_timeout.setText('0.0')
+            self.recmds_fixes.append(temp)
+
+
+       
+        
+        
+        
+        self.show_saving()
         
         # printer(interrupt,'interrupt')
         if not unsafe:
             if  len(self.recommendations)==0:
+                self.saveConfsToCache()
                 self.saveConfs()
             if len(self.recommendations)>0:
                 self.set_recommendations_window=SetRecommendations(self.recommendations,self.recmds_fixes)
                 self.set_recommendations_window.show()
         else:
+            self.saveConfsToCache()
             self.saveConfs()
 
             
