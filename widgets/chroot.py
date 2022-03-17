@@ -3,7 +3,7 @@ import sys
 from time import sleep
 import os
 import subprocess
-
+import zmq
 
 
 
@@ -50,7 +50,7 @@ class ChrootUi(QtWidgets.QWidget):
         
 class ChrootAfterUi(QtWidgets.QWidget):
 
-    def __init__(self,MainWindow):
+    def __init__(self,MainWindow,partition):
         super(ChrootAfterUi, self).__init__()
         uic.loadUi(f"{PATH}/ui/chroot_after.ui",self)
         # self.show()
@@ -58,6 +58,7 @@ class ChrootAfterUi(QtWidgets.QWidget):
         self.progress_window=None
         self.error_window=None
         self.MainWindow=MainWindow
+        self.partition=partition
         
         self.btn_reinstall_grub_package.clicked.connect(self.btn_reinstall_grub_package_callback)
         self.btn_exit_chroot.clicked.connect(self.btn_exit_chroot_callback)
@@ -77,7 +78,11 @@ class ChrootAfterUi(QtWidgets.QWidget):
                 
                 
     def btn_exit_chroot_callback(self):
-        subprocess.run(['umount -a'],shell=True)
+        context =zmq.Context()
+        socket = context.socket(zmq.REQ)
+        socket.connect("tcp://localhost:5556")
+        
+        socket.send(bytes(f"unmount {self.partition}",'ascii'))
         
         
     def btn_reinstall_grub_package_callback(self):
@@ -90,21 +95,32 @@ class ChrootAfterUi(QtWidgets.QWidget):
         #todo write tests to handle errors because of no  internet access error from pacman , pacman related errors etc
         
         def reinstall_grub_package(worker):
-            p=subprocess.Popen([f'chroot /grub_editor_mount && pkexec pacman -S grub --noconfirm'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,shell=True)
+            pass
+            context=zmq.Context()
+            socket= context.socket(zmq.REQ)
+            socket.connect("tcp://localhost:5556")
             
-            for line in p.stdout:
-                sys.stdout.write(line.decode()+'reading from stdout')
-                if "resolving dependencies..." in line.decode():
-                    print('emitted started signal chroot.py ')
-                    worker.signals.started.emit()
-                worker.signals.output.emit(line.decode())
-        
-        #passing None as argument to set the worker to none at first and then change to the worker
-        worker = Worker(reinstall_grub_package,worker=None)
-        worker.kwargs['worker']=worker
-        self.threadpool.start(worker)
-        
-        
+            socket.send(b"reinstall_grub_package")
+            
+            message = socket.recv().decode()
+            
+            while True:
+                words = message.split()
+                space_index=message.find(" ")
+                
+                if "started reinstalling successfully" ==message:
+                    socket.send(b"ok")
+                    pass #todo
+                
+                elif "reinstall_output"==words[0]:
+                    socket.send(b"ok")
+                    worker.signals.output.emit(message[space_index+1:])
+                elif "finished reinstalling grub package"==message:
+                    return 'success'
+                elif "reinstalling grub package failed"==message:
+                    return "failed"
+                message= socket.recv().decode()
+            
         def show_loading():
             self.progress_window=CustomProgressUi()
             self.progress_window.lbl_status.setText('reinstalling grub package..')
@@ -114,7 +130,6 @@ class ChrootAfterUi(QtWidgets.QWidget):
             
             #todo main window set enabled true when progress window is closed
             
-            
         def btn_close_callback():
             self.progress_window.close()
             
@@ -122,21 +137,37 @@ class ChrootAfterUi(QtWidgets.QWidget):
             #todo hide the loading window when process finishes
             
             if self.progress_window is not None: 
-                self.progress_window.lbl_status.setText('Finished reinstalling grub package successfully')
-                
-                
-                #remove the loading bar
-                self.progress_window.verticalLayout.itemAt(1).widget().deleteLater()
-                
-                
-                #add a close button
-                self.btn_close= QtWidgets.QPushButton()
-                self.btn_close.setText('Close')
-                self.progress_window.verticalLayout.addWidget(self.btn_close)
-                self.btn_close.clicked.connect(btn_close_callback)
-            
+                if result =='sucess':
+                    self.progress_window.lbl_status.setText('successfully reinstalled grub package')
+                    
+                    
+                    #remove the loading bar
+                    self.progress_window.verticalLayout.itemAt(1).widget().deleteLater()
+                    
+                    
+                    #add a close button
+                    self.btn_close= QtWidgets.QPushButton()
+                    self.btn_close.setText('Close')
+                    self.progress_window.verticalLayout.addWidget(self.btn_close)
+                    self.btn_close.clicked.connect(btn_close_callback)
+                elif result=='failed':
+                    self.progress_window.lbl_status.setText('Sorry reinstalling grub package failed look at the output for more details')
+                    
+                    
+                    #remove the loading bar
+                    self.progress_window.verticalLayout.itemAt(1).widget().deleteLater()
+                    
+                    
+                    #add a close button
+                    self.btn_close= QtWidgets.QPushButton()
+                    self.btn_close.setText('Close')
+                    self.progress_window.verticalLayout.addWidget(self.btn_close)
+                    self.btn_close.clicked.connect(btn_close_callback)
         
-                
+        #passing None as argument to set the worker to none at first and then change to the worker
+        worker = Worker(reinstall_grub_package,worker=None)
+        worker.kwargs['worker']=worker
+        self.threadpool.start(worker)      
             
     
         
