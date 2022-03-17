@@ -1,2 +1,2 @@
 python-elevate
-python-zmq
+python-pyzmq
