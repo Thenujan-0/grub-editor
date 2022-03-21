@@ -64,18 +64,18 @@ class ChrootAfterUi(QtWidgets.QWidget):
         self.btn_exit_chroot.clicked.connect(self.btn_exit_chroot_callback)
         
     def onOutput(self,output):
-        
+        print('output is',output)
         #! issue opening multiple progress windows at once can cause issues 
-            if self.progress_window is not None:
-                self.progress_window.update_lbl_details(output)
-                
-            elif self.error_window is not None:
-                pass
-                
-            elif self.error_window is None:
-                self.error_window=ErrorDialogUi()
-                self.error_window.show()
-                
+        if self.progress_window is not None:
+            self.progress_window.update_lbl_details(output)
+            
+        elif self.error_window is not None:
+            pass
+            
+        elif self.error_window is None:
+            self.error_window=ErrorDialogUi()
+            self.error_window.show()
+            
                 
     def btn_exit_chroot_callback(self):
         context =zmq.Context()
@@ -95,13 +95,13 @@ class ChrootAfterUi(QtWidgets.QWidget):
         #todo write tests to handle errors because of no  internet access error from pacman , pacman related errors etc
         
         def reinstall_grub_package(worker):
-            pass
+            print('started reinstall_grub_package')
             context=zmq.Context()
             socket= context.socket(zmq.REQ)
             socket.connect("tcp://localhost:5556")
             
             socket.send(b"reinstall_grub_package")
-            
+            print('told the server to reinstall_grub_package')
             message = socket.recv().decode()
             
             while True:
@@ -110,12 +110,14 @@ class ChrootAfterUi(QtWidgets.QWidget):
                 
                 if "started reinstalling successfully" ==message:
                     socket.send(b"ok")
-                    pass #todo
+                    print('server informed that the grub package installation has started')
                 
                 elif "reinstall_output"==words[0]:
                     socket.send(b"ok")
                     worker.signals.output.emit(message[space_index+1:])
+                    print('emitting output signal')
                 elif "finished reinstalling grub package"==message:
+                    print('completed successfully')
                     return 'success'
                 elif "reinstalling grub package failed"==message:
                     return "failed"

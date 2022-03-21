@@ -408,7 +408,9 @@ class Ui(QtWidgets.QMainWindow):
             
         def check_server_p_out(worker):
             ''' find out if authentication was cancelled in pkexec '''
+            print('reading output of server')
             for line in server_p.stdout:
+                server_p.stdout.flush()
                 if "Error executing command as another user: Not authorized" in line.decode():
                     worker.signals.error.emit(())
                 print('line is ',line.decode())
