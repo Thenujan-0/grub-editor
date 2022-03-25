@@ -1,7 +1,11 @@
 import os;
 import sys;
+from time import sleep
+from PyQt5 import QtWidgets,QtCore
+import subprocess
 
 
+HOME =os.getenv('HOME')
 PATH=os.path.dirname(os.path.realpath(__file__))
 
 #parent dir
@@ -9,7 +13,6 @@ PATH=PATH[0:-5]
 sys.path.append(PATH)
 
 import main
-from PyQt5 import QtWidgets,QtCore
 
 
 def test_grub_timeout_add_substract(qtbot):
@@ -37,6 +40,88 @@ def test_grub_timeout_add_substract(qtbot):
     
     
     
+def test_look_for_other_os(qtbot):
+    MainWindow = main.Ui()
+    mw=MainWindow
+    qtbot.addWidget(mw)
+    
+    cb=mw.checkBox_look_for_other_os
+    cb.setChecked(False)
+    
+    assert cb.isChecked() ==False  
+
+    main.setValue("GRUB_DISABLE_OS_PROBER=","false")
+    
+    save_btn=mw.btn_set
+    qtbot.mouseClick(mw.btn_set, QtCore.Qt.LeftButton)
+    sleep(1)
+    assert mw.lbl_status.text() =="Waiting for authentication"
+    sleep(3)
+    assert mw.lbl_status.text() =="Saving configurations"
+    while True:
+        if mw.lbl_status.text()=="Saving configurations":
+            sleep(1)
+        else:
+            break
+        
+        
+ 
+    issues=[]
+    assert main.getValue("GRUB_DISABLE_OS_PROBER=",issues)=="true"
+    assert issues ==[]
+    
+    assert mw.lbl_status.text() =="Saved successfully"
+    
+    
+    
+    #repeat the same test but now the opposite case
+    
+    cb=mw.checkBox_look_for_other_os
+    cb.setChecked(True)
+    
+    assert cb.isChecked() ==True  
+
+    main.setValue("GRUB_DISABLE_OS_PROBER=","true")
+    
+    save_btn=mw.btn_set
+    qtbot.mouseClick(mw.btn_set, QtCore.Qt.LeftButton)
+    sleep(1)
+    assert mw.lbl_status.text() =="Waiting for authentication"
+    sleep(3)
+    assert mw.lbl_status.text() =="Saving configurations"
+    while True:
+        if mw.lbl_status.text()=="Saving configurations":
+            sleep(1)
+        else:
+            break
+        
+        
+
+    issues=[]
+    assert main.getValue("GRUB_DISABLE_OS_PROBER=",issues)=="false"
+    assert issues ==[]
+            
+    
+    assert mw.lbl_status.text() =="Saved successfully"
+    
+def test_comboBox_configurations(qtbot):
+    MainWindow = main.Ui()
+    mw=MainWindow
+    qtbot.addWidget(mw)
+    for i in range(len(mw.all_entries)):
+        if i != mw.comboBox_grub_default.currentIndex():
+            temp_entry = mw.all_entries[i]
+            break
+    
+    
+    snapshot_test="""GRUB_DEFAULT="""
+    subprocess.run([f' echo "{snapshot_test}" > {HOME}/.grub-editor/snapshots/test_snapshot'],shell=True)
+    main.setValue("GRUB_DEFAULT=",temp_entry,target_file=f"{HOME}/.grub-editor/snapshots/test_snapshot")
+    mw.comboBox_configurations.setCurrentIndex(mw.configurations.index("test_snapshot"))
+
+    
+    #check if the correct value for grub default was shown
+    assert mw.all_entries[mw.comboBox_grub_default.currentIndex()] ==temp_entry
     
     
     

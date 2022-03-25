@@ -16,9 +16,10 @@ HOME=os.getenv("HOME")
 
 
 def test_btn_create_snapshot(qtbot):
-    #todo
-    pass
-
+    MainWindow =main.Ui()
+    mw= MainWindow
+    mw.tabWidget.setCurrentIndex(1)
+    
 #test the view snapshot button
 def test_btn_view(qtbot):
     
@@ -31,6 +32,7 @@ def test_btn_view(qtbot):
     if mw.VLayout_snapshot.itemAt(0) is  None:
         qtbot.mouseClick(mw.btn_create_snapshot, QtCore.Qt.LeftButton)
     
+    snapshot_name =mw.VLayout_snapshot.itemAt(0).layout().itemAt(0).widget().text()
     btn_view = mw.VLayout_snapshot.itemAt(0).layout().itemAt(2).widget()
     
     #check if it is view button
@@ -59,7 +61,7 @@ def test_btn_view(qtbot):
     #might fail when kate takes too long to load
     sleep(5)
     windows= subprocess.check_output(["wmctrl -l "],shell=True).decode()
-    assert "2022-03-04_10:51:28  — Kate" in windows
+    assert f"{snapshot_name}  — Kate" in windows
     
     main.set_preference("view_default","on_the_application_itself")
     
@@ -67,7 +69,7 @@ def test_btn_view(qtbot):
     assert not mw.view_btn_win.isVisible()
     assert mw.tabWidget.currentIndex() ==0
     
-    assert mw.comboBox_configurations.currentText() =="2022-03-04_10:51:28"
+    assert mw.comboBox_configurations.currentText() ==f"{snapshot_name}"
     
     
     
