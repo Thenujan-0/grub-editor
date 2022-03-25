@@ -1,7 +1,6 @@
 
 check if the current grub.cfg is up to date with /etc/default/grub
 check if other operating systems are there by executing os prober and if it takes too long then use grub.cfg to find out
-and then if other operating systems are there instruct the user to use 0.0 instead of 0 in timeout
 show no snapshots found above the list widget if no snapshots were found
 add UEFI support
 
@@ -11,10 +10,9 @@ write tests for checks if error_dialog text of the label part in qt designer is 
 
 dynamicaly set combobox item text with resize event so that no part if item text will be hidden
 
-viewbutton callback window show the selected snapshot's name
 
 fix bug that causes the loading configuration from to change when default text editor is selected on view button 's new window
 
-check what happens when a dual boot os removed from hard drive but selected as default entry in grub
 
 pop the last invalid default entry when fix has finished
+
