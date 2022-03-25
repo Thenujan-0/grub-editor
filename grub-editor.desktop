@@ -2,7 +2,7 @@
 Categories=Utility;System;
 Comment[en_US]=GUI to edit grub
 Comment=GUI to edit grub
-Exec=/opt/grub-editor/main.py
+Exec=/opt/grub-editor/__main__.py
 GenericName[en_US]=
 GenericName=
 Icon=preferences-system
