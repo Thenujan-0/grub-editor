@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Issues</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
@@ -35,7 +35,7 @@
       <item>
        <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>Grub-editor might not be able to function properly because of these issues.It is recommended that you fix these isues manually</string>
+         <string>Grub-editor might not be able to function properly because of these issues.Please fix these issues manually before proceeding</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>
@@ -61,13 +61,6 @@
           </property>
          </widget>
         </item>
-        <item>
-         <widget class="QPushButton" name="btn_open_grubeditor">
-          <property name="text">
-           <string>Open grub-editor anyway</string>
-          </property>
-         </widget>
-        </item>
        </layout>
       </item>
      </layout>
@@ -80,7 +73,7 @@
      <x>0</x>
      <y>0</y>
      <width>655</width>
-     <height>30</height>
+     <height>32</height>
     </rect>
    </property>
   </widget>
