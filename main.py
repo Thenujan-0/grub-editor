@@ -85,10 +85,14 @@ def check_dual_boot():
     out = subprocess.check_output(['pkexec os-prober'],shell=True).decode()
 
 
-def getValue(name,issues,read_file=file_loc):
+def getValue(name,issues,read_file=None):
     """arguments are  the string to look for 
     and the list to append issues to"""
 
+    if read_file is None:
+        read_file=file_loc
+    
+    
     #check if last character is = to avoid possible bugs
 
     if name[-1] != '=':
@@ -103,43 +107,53 @@ def getValue(name,issues,read_file=file_loc):
             if name in line:
                 # print(name,'name was found in the line',line)
                 if '#' in line :
-                    printer('found a line that could possibly commented out',line)
-                    string=name+'is commented out in /etc/default/grub'
+                    # printer('found a line that could possibly commented out',line)
+                    string=name+f' is commented out in {read_file}'
                     if string not in issues:
                         issues.append(string)
                     return 'None'
         # print(start_index,name)
         if start_index <0:
-            string='coudn\'t find '+name+' in /etc/default/grub'
+            string='coudn\'t find '+name+f' in {read_file}'
             if string not in issues:
                 issues.append(string)
             return "None"
         else:
             if end_index <0:
-                return data[start_index+len(name):]
+                data =  data[start_index+len(name):]
             else:
-                return data[start_index+len(name):end_index]
+                data = data[start_index+len(name):end_index]
 
-
+            #remove the double quotes in the end and the begining
+            if name=="GRUB_DEFAULT=":
+                if data[-1]=='"':
+                    data=data[:-1]
+                if data[0]=='"':
+                    data=data[1:]
+                    
+            return data
 
 
 
 def initialize_temp_file(file_path):
     """copies the file to ~/.cache/grub-editor/temp.txt so that setValue can start writing changes to it"""
-    subprocess.run([f'cp {file_path} {HOME}/.cache/grub-editor/temp.txt'],shell=True)
+    subprocess.run([f'cp \'{file_path}\' {HOME}/.cache/grub-editor/temp.txt'],shell=True)
 
 
-def setValue(name,val):
+def setValue(name,val,target_file=f'{HOME}/.cache/grub-editor/temp.txt'):
     """ writes the changes to ~/.cache/grub-editor/temp.txt. call initialize_temp_file before start writing to temp.txt
     call self.saveConfs or cp the file from cache to original to finalize the changes
     """
-    target_file=f'{HOME}/.cache/grub-editor/temp.txt'
 
 
 
     if name[-1] != '=':
         raise Exception("name passed for setValue doesnt contain = as last character")
     
+    if name =="GRUB_DEFAULT=" and val[0]!='"' and val[-1]!='"':
+        val='"'+val+'"'
+    
+    print('the target_file is',target_file)
     with open(target_file,'r') as file:
         printer('file_loc',file_loc)
         to_write_data =file.read()
@@ -172,7 +186,7 @@ def setValue(name,val):
     
     subprocess.Popen([f'mkdir -p {HOME}/.cache/grub-editor/'],shell=True)
     subprocess.Popen([f'touch {HOME}/.cache/grub-editor/temp.txt'],shell=True)
-    with open(f'{HOME}/.cache/grub-editor/temp.txt','w') as file:
+    with open(target_file,'w') as file:
         file.write(to_write_data)
         
         
@@ -349,6 +363,17 @@ class Ui(QtWidgets.QMainWindow):
         if len(self.issues) > 0:
             self.issuesUi=IssuesUi(self.issues)
             self.issuesUi.show()
+            self.setEnabled(False)
+            
+            def quit():
+                sys.exit()
+                
+            def open_file():
+                subprocess.run(["xdg-open /etc/default/grub"],shell=True)
+                sys.exit()
+                
+            self.issuesUi.btn_quit.clicked.connect(quit)
+            self.issuesUi.btn_open_file.clicked.connect(open_file)
         self.ledit_grub_timeout.textChanged.connect(self.ledit_grub_timeout_callback)
         self.predefined.toggled.connect(self.radiobutton_toggle_callback)
         self.comboBox_grub_default.currentIndexChanged.connect(self.comboBox_grub_default_on_current_index_change)
@@ -621,7 +646,8 @@ class Ui(QtWidgets.QMainWindow):
             file_loc='/etc/default/grub'
         else:
             file_loc=f'{HOME}/.grub-editor/snapshots/{value}'
-            
+        
+        print(file_loc)
         self.setUiElements()
             
         
@@ -669,26 +695,24 @@ class Ui(QtWidgets.QMainWindow):
     def set_comboBox_grub_default(self,show_invalid_default=False):
         """ sets the right index to comboBox_grub_default and radio buttons,
         if second argument is true then it will check if the grub default value is invalid and if it is invalid it will show a dialog"""
+        
         grub_default_val =getValue('GRUB_DEFAULT=',self.issues)
-        if grub_default_val[0]=='"':
-            grub_default_val= grub_default_val[1:]
-        if grub_default_val[-1]=='"':
-            grub_default_val=grub_default_val[:-1]
 
 
-        print('checking for invalid entry')
+
+        # print('checking for invalid entry')
         #check if an invalid configuration exists
-        if "(INVALID)" in self.all_entries[-1]:
-            print("removing invalid entry")
-            #todo check if this part is needed in code
-            grub_invalid_val = self.all_entries[-1].replace('(INVALID)',"")
-            if grub_invalid_val != grub_default_val:
-                self.all_entries.pop(-1)
-                self.comboBox_grub_default.removeItem(len(self.all_entries))
+        # if "(INVALID)" in self.all_entries[-1]:
+        #     # print("removing invalid entry")
+        #     grub_invalid_val = self.all_entries[-1].replace('(INVALID)',"")
+        #     if grub_invalid_val != grub_default_val:
+        #         self.all_entries.pop(-1)
+        #         self.comboBox_grub_default.removeItem(len(self.all_entries))
 
-        else:
-            print('no invalid entry found')
-            print('last entry is ',self.all_entries[-1])
+        # else:
+        #     pass
+        #     # print('no invalid entry found')
+        #     # print('last entry is ',self.all_entries[-1])
         
         if grub_default_val=='saved':
             self.previously_booted_entry.setChecked(True)
@@ -707,10 +731,7 @@ class Ui(QtWidgets.QMainWindow):
                 
                 #add the invalid entry to the combo box
                 invalid_value=getValue('GRUB_DEFAULT=',self.issues)
-                if invalid_value[0]=='"':
-                    invalid_value= invalid_value[1:]
-                if invalid_value[-1]=='"':
-                    invalid_value=invalid_value[:-1]
+
 
                 
                 #concistency iun showing entries
@@ -721,9 +742,9 @@ class Ui(QtWidgets.QMainWindow):
                     
                     # print(self.comboBox_grub_default.itemAt(0))
                     self.comboBox_grub_default.addItem(invalid_value)
-                    print(self.comboBox_grub_default.itemText(1))
+                    # print(self.comboBox_grub_default.itemText(1))
                     self.all_entries.append(invalid_value)
-                    print(self.all_entries[-1],'last item is')
+                    # print(self.all_entries[-1],'last item is')
                     self.comboBox_grub_default.setCurrentIndex(len(self.all_entries)-1)
                 else:
                     index =self.all_entries.index(invalid_value)
@@ -731,7 +752,7 @@ class Ui(QtWidgets.QMainWindow):
                 
                 
                 def create_win(btn_cancel=False):
-                    print(btn_cancel)
+                    # print(btn_cancel)
                     self.dialog_invalid_default_entry=DialogUi(btn_cancel=btn_cancel)
                     self.dialog_invalid_default_entry.label.setText("/etc/grub/default currently has an invalid default entry")
                     self.dialog_invalid_default_entry.show()
@@ -739,63 +760,76 @@ class Ui(QtWidgets.QMainWindow):
                 
                 #find out if created a unique dialog_window
                 unique_dialog_win= False
+                print(unique_dialog_win,'unique_dialog_win')
                 
-                if show_invalid_default:
+                if True:
                     index = invalid_value.find('(Kernel: ')
                     for value in self.all_entries:
                         
+                        #check if the part before the kernel is same
                         if invalid_value[:index]== value[:index]:
                             
                             pattern=r'\d.\d+'
                             krnl_major_vrsn=re.search(pattern,invalid_value).group(0)
                             krnl_major_vrsn2 = re.search(pattern,value).group(0)
-                            print(value ,krnl_major_vrsn2,krnl_major_vrsn)
+                            # print(value ,krnl_major_vrsn2,krnl_major_vrsn)
                             if krnl_major_vrsn2 == krnl_major_vrsn:
-                                print('this value passed krnl_major_vrsn check',value)
-                                #check if fallback initramfs
+                                
+                                
+                                #if the invalid contains fallback then the non invalid should also contain initramfs
                                 #todo find out why this returns unexpected value
                                 # condition =   ('fallback initramfs)' in value ) ^ ('fallback intramfs)' in invalid_value )
+                                
                                 #to avoid some unexpected behavior by python
                                 first =('fallback initramfs)' in value )
                                 second = ('fallback initramfs)' in invalid_value )
+                                
                                 condition = not (first ^ second)
-                                print(condition,'condition for this value')
-                                print(value!=invalid_value,'value not equal to invalidvalue')
-                                
-                                
                                 
                                 if condition and (value != invalid_value):
-                                    print('the right one ',invalid_value,value)
+                                    # print('the right one ',invalid_value,value)
                                     crct_value =value
                                     
-                                    create_win(True)
+                                    create_win(False)
                                     dwin = self.dialog_invalid_default_entry
                                     dwin.btn_ok.setText('Fix')
-                                    dwin.label.setText('etc/default/grub current has an invalid default entry. It is because of a kernel update . Do you want Grub editor to fix it for you?')
+                                    if file_loc =='/etc/default/grub':
+                                        file_name = '/etc/default/grub'
+                                        dwin.label.setText(f'{file_name} currently has an invalid default entry. It is because of a kernel update . Do you want Grub editor to fix it for you?')
+                                        
+                                    elif f'{HOME}/.grub-editor/snapshots/' in  file_loc:
+                                        file_name=file_loc.replace(f'{HOME}/.grub-editor/snapshots/','')
+                                        dwin.label.setText(f'snapshot you selected ({file_name}) currently has an invalid default entry. It is because of a kernel update . Do you want Grub editor to fix it for you?')
+                                        
+                                    else:
+                                        printer("Error unknown condition when checking file_loc")
+                                        printer(file_loc)
                                     
                                     
                                     def fix():
-                                        initialize_temp_file('/etc/default/grub')
-                                        print(value,'value--------------------------')
+                                        print('editing the file from',file_loc,'to fix kernel version')
+                                        initialize_temp_file(file_loc)
+                                        # print(value,'value--------------------------')
                                         
                                         
                                         if '>' in crct_value:
                                             front_part=crct_value[:crct_value.find(' >')]
                                             last_part=crct_value[crct_value.find('>'):]
-                                            print(front_part,last_part)
-                                            to_write='"'+front_part+last_part+'"'
-                                            setValue('GRUB_DEFAULT=',to_write)
+                                            # print(front_part,last_part)
+                                            to_write=front_part+last_part
+                                            setValue('GRUB_DEFAULT=',to_write,target_file=file_loc)
                                             # printer('called:''GRUB_DEFAULT=',to_write)
                                             # printer(to_write+'part to be written')
                                         else:
-                                            setValue('GRUB_DEFAULT=','\"'+crct_value+'\"')
+                                            setValue('GRUB_DEFAULT=','\"'+crct_value+'\"',target_file=file_loc)
                                         
                                         
                                         
                                         # setValue("GRUB_DEFAULT=",crct_value)
-                                        print('set grub default to the correct one')
-                                        self.show_saving()
-                                        self.saveConfs()
+                                        # print('set grub default to the correct one')
+                                        # self.show_saving()
+                                        # self.saveConfs(target=file_loc)
+                                        self.setUiElements()
                                         dwin.close()
                                         
                                     dwin.btn_ok.clicked.connect(fix)
@@ -810,10 +844,6 @@ class Ui(QtWidgets.QMainWindow):
     def get_comboBox_grub_default(self):
         """returns the value comboBox grub_default should have"""
         grub_default_val =getValue('GRUB_DEFAULT=',self.issues)
-        if grub_default_val[0]=='"':
-            grub_default_val= grub_default_val[1:]
-        if grub_default_val[-1]=='"':
-            grub_default_val=grub_default_val[:-1]
             
         grub_default_val=grub_default_val.replace('>',' >')
         return grub_default_val
@@ -954,7 +984,7 @@ class Ui(QtWidgets.QMainWindow):
                 if '>' in self.grub_default:
                     front_part=self.grub_default[:self.grub_default.find(' >')]
                     last_part=self.grub_default[self.grub_default.find('>'):]
-                    to_write='"'+front_part+last_part+'"'
+                    to_write=front_part+last_part
                     setValue('GRUB_DEFAULT=',to_write)
                     # printer('called:''GRUB_DEFAULT=',to_write)
                     # printer(to_write+'part to be written')
@@ -983,17 +1013,16 @@ class Ui(QtWidgets.QMainWindow):
         if self.checkBox_look_for_other_os.isChecked():
             setValue("GRUB_DISABLE_OS_PROBER=","false")
         else:
-            setValue("GRUB_DISABLE_OS_PROBER","true")
+            setValue("GRUB_DISABLE_OS_PROBER=","true")
 
-    def saveConfs(self):
+    def saveConfs(self,target='/etc/default/grub'):
         """ copies the configuration file from cache to the target(/etc/default/grub) """
         
 
         def final(self):
             try:
-                
                 process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && \
-                        cp -f  "{HOME}/.cache/grub-editor/temp.txt"  '+write_file +' && sudo update-grub 2>&1 \'  '],
+                        cp -f  "{HOME}/.cache/grub-editor/temp.txt"  '+target +' && sudo update-grub 2>&1 \'  '],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     shell=True)
@@ -1238,7 +1267,6 @@ class Ui(QtWidgets.QMainWindow):
         
         
         self.show_saving()
-        
         # printer(interrupt,'interrupt')
         if not unsafe:
             if  len(self.recommendations)==0:
@@ -1328,13 +1356,17 @@ class Ui(QtWidgets.QMainWindow):
             default=getValue("GRUB_DEFAULT=",self.issues,f"{HOME}/.grub-editor/snapshots/{line}")
 
             if default not in self.all_entries:
-                printer("Value of default in snapshot is not a valid os")
+                # printer("Value of default in snapshot is not a valid os")
+                # printer(default ,'is the value found in snapshot')
+                # printer(self.all_entries)
                 self.dialog_invalid_snapshot=DialogUi(btn_cancel=True)
                 self.dialog_invalid_snapshot.label.setText("The snapshot you have selected has an invalid value for grub default")
                 self.dialog_invalid_snapshot.btn_ok.setText('continue anyway')
                 self.dialog_invalid_snapshot.show()
                 self.dialog_invalid_snapshot.btn_ok.clicked.connect(set_snapshot)
 
+            else:
+                set_snapshot()
 
 
             # printer(f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
@@ -1542,12 +1574,12 @@ class Ui(QtWidgets.QMainWindow):
         # print('handle_modify: start',self.original_modifiers)
         try:
             current_item = self.configurations[self.comboBox_configurations.currentIndex()]
-            print(current_item+':current_item')
+            # print(current_item+':current_item')
             # if current_item=='/etc/default/grub' or current_item=='/etc/default/grub(modified)':
             
-            print('yes')
+            # print('yes')
             if len(self.original_modifiers)>0:
-                print(self.original_modifiers)
+                # print(self.original_modifiers)
                 # printer(current_item)
                 if '(modified)' not in current_item:
                     stringy=current_item+'(modified)'
@@ -1782,7 +1814,6 @@ class SetRecommendations(QtWidgets.QMainWindow):
             if verticalLayout_2.count() == 0:
                 MainWindow.set_recommendations_window.close()
                 MainWindow.btn_set_callback()       
-     
 
         return btn_fix_callback
 
