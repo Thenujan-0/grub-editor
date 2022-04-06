@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Create snapshot</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
@@ -65,7 +65,7 @@
      <x>0</x>
      <y>0</y>
      <width>649</width>
-     <height>30</height>
+     <height>32</height>
     </rect>
    </property>
   </widget>
