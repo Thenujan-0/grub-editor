@@ -188,7 +188,7 @@ def set_value(name,val,target_file=f'{HOME}/.cache/grub-editor/temp.txt'):
     with open(target_file,'w') as file:
         file.write(to_write_data)
         
-def initialize_temp_file(file_path):
+def initialize_temp_file(file_path="/etc/default/grub"):
     """copies the file to ~/.cache/grub-editor/temp.txt so that set_value can start writing changes to it"""
     subprocess.run([f'cp \'{file_path}\' {HOME}/.cache/grub-editor/temp.txt'],shell=True)
       
@@ -342,10 +342,11 @@ class Ui(QtWidgets.QMainWindow):
         self.btn_substract.clicked.connect(self.btn_substract_callback)
         self.issues=[]
         
-        self.setUiElements(show_issues=True)
         
         self.original_modifiers=[]
         self.modified_original =False
+        
+        self.setUiElements(show_issues=True)
         
         
         self.comboBox_configurations.currentIndexChanged.connect(self.comboBox_configurations_callback)
@@ -738,8 +739,8 @@ class Ui(QtWidgets.QMainWindow):
                     self.comboBox_grub_default.setCurrentIndex(index)
                 
                 
-                def create_win(btn_cancel=False):
-                    # print(btn_cancel)
+                def create_win(btn_cancel=True):
+                    print(btn_cancel)
                     self.dialog_invalid_default_entry=DialogUi(btn_cancel=btn_cancel)
                     self.dialog_invalid_default_entry.label.setText("/etc/grub/default currently has an invalid default entry")
                     self.dialog_invalid_default_entry.show()
@@ -761,7 +762,6 @@ class Ui(QtWidgets.QMainWindow):
                         # print(value ,krnl_major_vrsn2,krnl_major_vrsn)
                         if krnl_major_vrsn2 == krnl_major_vrsn:
                             
-                            
                             #if the invalid contains fallback then the non invalid should also contain initramfs
                             #todo find out why this returns unexpected value
                             # condition =   ('fallback initramfs)' in value ) ^ ('fallback intramfs)' in invalid_value )
@@ -776,7 +776,7 @@ class Ui(QtWidgets.QMainWindow):
                                 # print('the right one ',invalid_value,value)
                                 crct_value =value
                                 
-                                create_win(False)
+                                create_win(True)
                                 dwin = self.dialog_invalid_default_entry
                                 dwin.btn_ok.setText('Fix')
                                 if file_loc ==CONF_LOC:
@@ -818,8 +818,10 @@ class Ui(QtWidgets.QMainWindow):
                                     # self.saveConfs(target=file_loc)
                                     self.setUiElements()
                                     dwin.close()
-                                    
+                                def cancel():
+                                    dwin.close()
                                 dwin.btn_ok.clicked.connect(fix)
+                                dwin.btn_ok.clicked.connect(cancel)
                                 unique_dialog_win =True
                                 
                                     
@@ -922,7 +924,8 @@ class Ui(QtWidgets.QMainWindow):
             else:
                 # raise Exception("Unknown value for GRUB_DISABLE_OS_PROBER",value)
                 printer(f"Unknown value for GRUB_DISABLE_OS_PROBER {value} in {file_loc}")
-        
+        self.handle_modify()
+        print("file_loc",file_loc)
         
     def set_lbl_details(self):
         """receives the string in lbl_details_text and sets it as the label for lbl_details"""
@@ -1557,7 +1560,7 @@ class Ui(QtWidgets.QMainWindow):
         
         """ handles when the loaded configuration is modified in the apps . 
         it adds "(modified)" to the value of comboBox_configurations  according to the length of self.original_modifiers""" 
-        # print('handle_modify: start',self.original_modifiers)
+        print('handle_modify: start',self.original_modifiers)
         try:
             current_item = self.configurations[self.comboBox_configurations.currentIndex()]
             # print(current_item+':current_item')
@@ -1797,12 +1800,12 @@ class SetRecommendations(QtWidgets.QMainWindow):
 
 
 def main():
+    
     global app
     app =QtWidgets.QApplication(sys.argv)
     global MainWindow
     MainWindow=Ui()
-    app.exec_()
+    sys.exit(app.exec_())
 
 if __name__ =='__main__':
-    # Thread(target=main).start()
     main()
