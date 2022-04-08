@@ -832,7 +832,7 @@ class Ui(QtWidgets.QMainWindow):
         """returns the value comboBox grub_default should have"""
         grub_default_val =get_value('GRUB_DEFAULT=',self.issues)
             
-        grub_default_val=grub_default_val.replace('>',' >')
+       
         return grub_default_val
                 
     def setUiElements(self,reload_confs=True,show_issues=True,only_snapshots=False):
