@@ -17,3 +17,5 @@ fix bug that causes the loading configuration from to change when default text e
 pop the last invalid default entry when fix has finished
 
 checkbox do this everytime in invalid grub default fixer
+
+remove the use of get_comboBox_grub_default function
