@@ -16,9 +16,10 @@ import main
 HOME=os.getenv("HOME")
 
 #checks if modified is shown but the main purpose of this function is to use it in other tests
-def test_change_all_config(qtbot):
-    MainWindow =main.Ui()
-    mw= MainWindow
+def test_change_config_modified(qtbot):
+    #mw stand for mainWindow
+    mw=main.Ui()
+    main.MainWindow=mw;
     curr_ind = mw.comboBox_grub_de
     for i in  range(len(mw.all_entries)):
         if i!= curr_ind:
@@ -115,8 +116,9 @@ def _test_add_changes_snapshot(qtbot,mw):
     assert 'GRUB_DEFAULT=' in lines[3]
 
 def test_btn_create_snapshot(qtbot):
-    MainWindow =main.Ui()
-    mw= MainWindow
+    #mw stand for mainWindow
+    mw=main.Ui()
+    main.MainWindow=mw;
     mw.tabWidget.setCurrentIndex(1)
     qtbot.addWidget(mw)
     
@@ -168,8 +170,9 @@ def test_btn_create_snapshot(qtbot):
     _test_add_changes_snapshot(qtbot,mw)
 
 def test_btn_delete_snapshot(qtbot):
-    MainWindow =main.Ui()
-    mw= MainWindow
+    #mw stand for mainWindow
+    mw=main.Ui()
+    main.MainWindow=mw;
     mw.tabWidget.setCurrentIndex(1)
     
     snapshots = []
@@ -180,22 +183,58 @@ def test_btn_delete_snapshot(qtbot):
     
     qtbot.mouseClick(mw.btn_create_snapshot, QtCore.Qt.LeftButton)
     
+    snapshot_is_in_list_var= False
     #check if a snapshot was created
     for i in range(len(mw.configurations)):
         try:
             snapshots.remove(mw.comboBox_configurations.itemText(i))
-        except:
+        except ValueError:
             if '(modified)' not in mw.comboBox_configurations.itemText(i):
                 if mw.comboBox_configurations.itemText(i)==date_time:
-                    new_snapshot_ind=i
+                    snapshot_is_in_list_var =True
                     break
+    assert snapshot_is_in_list_var==True
+    
+    for i in range(mw.VLayout_snapshot.count()):
+        text =mw.VLayout_snapshot.itemAt(i).itemAt(0).widget().text()
+        if text == date_time:
+            new_snapshot_ind = i
+            break
+    assert main.CONF_LOC== mw.configurations[mw.comboBox_configurations.currentIndex()]
     
     #now that we have found the index of the snapshot we have just created 
     #Lets find the delete btn of the snapshot
-    btn_delete = mw.VLayout_snapshot.itemAt(new_snapshot_ind).itemAt(2).widget()
+    print(i)
+    target_snapshot_row=mw.VLayout_snapshot.itemAt(new_snapshot_ind)
+    btn_delete = target_snapshot_row.itemAt(3).widget()
     
-    #todo 
+    assert target_snapshot_row.itemAt(0).widget().text()==date_time
+    
+    mw.tabWidget.setCurrentIndex(0)
+    
+    #change something the edit_configurations UI and check if the value persists after deleti
+    mw.btn_substract.click()
+    assert '(modified)' in mw.configurations[mw.comboBox_configurations.currentIndex()]
+    
+    #get current value of grub timeout
+    old_val = mw.ledit_grub_timeout.text()
+    
+    mw.tabWidget.setCurrentIndex(1)
+    
     qtbot.mouseClick(btn_delete,QtCore.Qt.LeftButton)
+    sleep(1)
+    assert main.CONF_LOC+"(modified)"== mw.configurations[mw.comboBox_configurations.currentIndex()]
+    
+    assert mw.VLayout_snapshot.itemAt(new_snapshot_ind).itemAt(3).widget() != btn_delete
+
+    assert '(modified)' in mw.configurations[mw.comboBox_configurations.currentIndex()]
+    
+    mw.tabWidget.setCurrentIndex(0)
+    
+    #get the new value of grub timeout
+    assert mw.ledit_grub_timeout.text()  == old_val
+    
+    assert '(modified)' in mw.configurations[mw.comboBox_configurations.currentIndex()]
     
     
     

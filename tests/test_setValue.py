@@ -77,14 +77,14 @@ def test_commented_lines(qtbot):
         f.write(commented_config)
     
     issues=[]
-    main.getValue("GRUB_DEFAULT=",issues,tmp_file)
+    main.get_value("GRUB_DEFAULT=",issues,tmp_file)
     assert issues==[f"GRUB_DEFAULT= is commented out in {tmp_file}"]
     
-    main.setValue("GRUB_DEFAULT=","Garuda Linux")
+    main.set_value("GRUB_DEFAULT=","Garuda Linux")
     
     
     issues=[]
-    assert main.getValue("GRUB_DEFAULT=",issues,read_file=tmp_file)=="Garuda Linux"
+    assert main.get_value("GRUB_DEFAULT=",issues,read_file=tmp_file)=="Garuda Linux"
     
         
         

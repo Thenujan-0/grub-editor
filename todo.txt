@@ -19,3 +19,4 @@ pop the last invalid default entry when fix has finished
 checkbox do this everytime in invalid grub default fixer
 
 remove the use of get_comboBox_grub_default function
+Fix bug that shows modified instead of invalid when invalid default entry is specified in GRUB_DEFAULT

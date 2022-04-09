@@ -127,13 +127,11 @@ def get_value(name,issues,read_file=None):
 
             #remove the double quotes in the end and the begining
             if name=="GRUB_DEFAULT=":
-                print("check for grub_DEFAULT")
                 if data[-1]=='"':
                     data=data[:-1]
                 if data[0]=='"':
                     data=data[1:]
                 if data.find(">")>0:
-                    print("found > symbol ")
                     data =data.replace(">"," >")
             return data
 
@@ -255,7 +253,7 @@ def clear_layout(layout):
             elif child.layout() is not None:
                 clear_layout(child.layout())
 
-                    
+         
 class Ui(QtWidgets.QMainWindow):
     resized = QtCore.pyqtSignal()
     snapshot_lbl_len_const=23
@@ -295,7 +293,7 @@ class Ui(QtWidgets.QMainWindow):
 
         self.show()
 
-
+        
         #possible windows that will be created later 
 
         #a window to show suggestios regarding grub configuration
@@ -308,6 +306,9 @@ class Ui(QtWidgets.QMainWindow):
 
         #dictionary to store qlineEdits for rename .stored widget is qlineEditWidget. key is index of the row
         self.rename_line_edits={}
+        
+        #A list to store the invalid grub_default_entries
+        self.invalid_entries=[]
         
         #dictionary for storing labels (rename) . key is index of the row
         self.btn_set.clicked.connect(self.btn_set_callback)
@@ -635,8 +636,7 @@ class Ui(QtWidgets.QMainWindow):
         else:
             file_loc=f'{HOME}/.grub-editor/snapshots/{value}'
         
-        print(file_loc)
-        self.setUiElements()
+        self.setUiElements(show_issues=True)
             
         
         
@@ -730,9 +730,13 @@ class Ui(QtWidgets.QMainWindow):
                     
                     # print(self.comboBox_grub_default.itemAt(0))
                     self.comboBox_grub_default.addItem(invalid_value)
+                    model =self.comboBox_grub_default.model()
                     # print(self.comboBox_grub_default.itemText(1))
                     self.all_entries.append(invalid_value)
+                    self.invalid_entries.append(invalid_value)
                     # print(self.all_entries[-1],'last item is')
+                    model.setData(model.index(len(self.all_entries)-1, 0), QtGui.QColor("#ff5145"), QtCore.Qt.BackgroundRole)
+                    model.setData(model.index(len(self.all_entries)-1, 0), QtGui.QColor("black"), QtCore.Qt.ForegroundRole)
                     self.comboBox_grub_default.setCurrentIndex(len(self.all_entries)-1)
                 else:
                     index =self.all_entries.index(invalid_value)
@@ -740,7 +744,7 @@ class Ui(QtWidgets.QMainWindow):
                 
                 
                 def create_win(btn_cancel=True):
-                    print(btn_cancel)
+                    # print(btn_cancel)
                     self.dialog_invalid_default_entry=DialogUi(btn_cancel=btn_cancel)
                     self.dialog_invalid_default_entry.label.setText("/etc/grub/default currently has an invalid default entry")
                     self.dialog_invalid_default_entry.show()
@@ -748,7 +752,7 @@ class Ui(QtWidgets.QMainWindow):
                 
                 #find out if created a unique dialog_window
                 unique_dialog_win= False
-                print(unique_dialog_win,'unique_dialog_win')
+                # print(unique_dialog_win,'unique_dialog_win')
                 
                 index = invalid_value.find('(Kernel: ')
                 for value in self.all_entries:
@@ -827,15 +831,19 @@ class Ui(QtWidgets.QMainWindow):
                                     
                 if not unique_dialog_win:
                     create_win()
+        current_is_invalid=False
+        for entry in self.invalid_entries:
+            if entry == self.all_entries[self.comboBox_grub_default.currentIndex()]:
+                self.comboBox_grub_default.setStyleSheet("""QComboBox {
+  background: #ff5145;
+  color:black;
+}""")
+                current_is_invalid=True
+                break
+        if not current_is_invalid:
+            self.comboBox_grub_default.setStyleSheet("")
 
 
-
-    def get_comboBox_grub_default(self):
-        """returns the value comboBox grub_default should have"""
-        grub_default_val =get_value('GRUB_DEFAULT=',self.issues)
-            
-       
-        return grub_default_val
                 
     def setUiElements(self,reload_confs=True,show_issues=True,only_snapshots=False):
         """reloads the ui elements that should be reloaded
@@ -925,7 +933,7 @@ class Ui(QtWidgets.QMainWindow):
                 # raise Exception("Unknown value for GRUB_DISABLE_OS_PROBER",value)
                 printer(f"Unknown value for GRUB_DISABLE_OS_PROBER {value} in {file_loc}")
         self.handle_modify()
-        print("file_loc",file_loc)
+        
         
     def set_lbl_details(self):
         """receives the string in lbl_details_text and sets it as the label for lbl_details"""
@@ -1493,16 +1501,29 @@ class Ui(QtWidgets.QMainWindow):
         
         
 
-            
     
 
-    def comboBox_grub_default_on_current_index_change(self):
+    def comboBox_grub_default_on_current_index_change(self,value):
         try:
             """ current index changed callback """
             # printer('combo box currentIndexChanged')
+            current_is_invalid=False
+            for entry in self.invalid_entries:
+                if entry == self.all_entries[self.comboBox_grub_default.currentIndex()]:
+                    self.comboBox_grub_default.setStyleSheet("""QComboBox {
+  background: #ff5145;
+  color:black;
+}""")
+                    current_is_invalid=True
+                    break
+            if not current_is_invalid:
+                self.comboBox_grub_default.setStyleSheet("")
+            
+                
+            
             comboBox = self.sender()
             combo_text =self.all_entries[comboBox.currentIndex()]
-            grub_default = self.get_comboBox_grub_default()
+            grub_default = get_value('GRUB_DEFAULT=',self.issues)
             if grub_default !=combo_text and not self.modified_original:
                 # self.modified_original = True
                 if comboBox not in self.original_modifiers:
@@ -1512,9 +1533,6 @@ class Ui(QtWidgets.QMainWindow):
                 if comboBox in self.original_modifiers:
                     self.original_modifiers.remove(comboBox)
 
-            # printer('modifed original is now',self.modified_original)
-            # printer('original modifiers',self.original_modifiers)
-            # printer(self.comboBox_configurations.itemData(1))
             self.handle_modify()
         except Exception as e:
             printer(traceback.format_exc())
@@ -1528,7 +1546,7 @@ class Ui(QtWidgets.QMainWindow):
     def radiobutton_toggle_callback(self):
         try:
             btn= self.sender()
-            grub_default_val =self.get_comboBox_grub_default()
+            grub_default_val =get_value('GRUB_DEFAULT=',self.issues)
 
                 
             
@@ -1560,7 +1578,6 @@ class Ui(QtWidgets.QMainWindow):
         
         """ handles when the loaded configuration is modified in the apps . 
         it adds "(modified)" to the value of comboBox_configurations  according to the length of self.original_modifiers""" 
-        print('handle_modify: start',self.original_modifiers)
         try:
             current_item = self.configurations[self.comboBox_configurations.currentIndex()]
             # print(current_item+':current_item')
@@ -1591,12 +1608,10 @@ class Ui(QtWidgets.QMainWindow):
                         self.comboBox_configurations.setCurrentIndex(index_to_put_after)
                         break
                 self.comboBox_configurations.blockSignals(False)
-                # printer(index_to_remove)
         except Exception as e:
             printer(traceback.format_exc())
             printer(str(e))
         
-        # print('handle_modify: end',self.original_modifiers)
         
     def createSnapshotList(self):
         try:

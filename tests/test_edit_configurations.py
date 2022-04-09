@@ -50,13 +50,15 @@ def test_look_for_other_os(qtbot):
     
     assert cb.isChecked() ==False  
 
-    main.setValue("GRUB_DISABLE_OS_PROBER=","false")
+    main.set_value("GRUB_DISABLE_OS_PROBER=","false")
     
     save_btn=mw.btn_set
     qtbot.mouseClick(mw.btn_set, QtCore.Qt.LeftButton)
     sleep(1)
     assert mw.lbl_status.text() =="Waiting for authentication"
     sleep(3)
+    
+    #might fail if password wasnt entered in 3 seconds
     assert mw.lbl_status.text() =="Saving configurations"
     while True:
         if mw.lbl_status.text()=="Saving configurations":
@@ -67,7 +69,7 @@ def test_look_for_other_os(qtbot):
         
  
     issues=[]
-    assert main.getValue("GRUB_DISABLE_OS_PROBER=",issues)=="true"
+    assert main.get_value("GRUB_DISABLE_OS_PROBER=",issues)=="true"
     assert issues ==[]
     
     assert mw.lbl_status.text() =="Saved successfully"
@@ -81,9 +83,10 @@ def test_look_for_other_os(qtbot):
     
     assert cb.isChecked() ==True  
 
-    main.setValue("GRUB_DISABLE_OS_PROBER=","true")
+    main.set_value("GRUB_DISABLE_OS_PROBER=","true")
     
     save_btn=mw.btn_set
+    #todo
     qtbot.mouseClick(mw.btn_set, QtCore.Qt.LeftButton)
     sleep(1)
     assert mw.lbl_status.text() =="Waiting for authentication"
@@ -98,7 +101,7 @@ def test_look_for_other_os(qtbot):
         
 
     issues=[]
-    assert main.getValue("GRUB_DISABLE_OS_PROBER=",issues)=="false"
+    assert main.get_value("GRUB_DISABLE_OS_PROBER=",issues)=="false"
     assert issues ==[]
             
     
@@ -116,7 +119,7 @@ def test_comboBox_configurations(qtbot):
     
     snapshot_test="""GRUB_DEFAULT="""
     subprocess.run([f' echo "{snapshot_test}" > {HOME}/.grub-editor/snapshots/test_snapshot'],shell=True)
-    main.setValue("GRUB_DEFAULT=",temp_entry,target_file=f"{HOME}/.grub-editor/snapshots/test_snapshot")
+    main.set_value("GRUB_DEFAULT=",temp_entry,target_file=f"{HOME}/.grub-editor/snapshots/test_snapshot")
     mw.comboBox_configurations.setCurrentIndex(mw.configurations.index("test_snapshot"))
 
     
