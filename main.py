@@ -26,7 +26,7 @@ from libs.qt_functools import insert_into, reconnect
 from libs.worker import Worker
 from widgets.dialog import DialogUi
 from widgets.error_dialog import ErrorDialogUi
-
+from widgets.loading_bar import LoadingBar
 CONF_LOC='/etc/default/grub'
 file_loc=CONF_LOC
 
@@ -732,7 +732,6 @@ class Ui(QtWidgets.QMainWindow):
             when show issues is true it will show a dialog if the grub default value is invalid
         
         """
-        print("setUiElements was called")
         if not only_snapshots:
             try:
                 #catch error that might occur when self.configurations is not initialized
@@ -896,6 +895,65 @@ class Ui(QtWidgets.QMainWindow):
             set_value("GRUB_DISABLE_OS_PROBER=","false")
         else:
             set_value("GRUB_DISABLE_OS_PROBER=","true")
+            
+    def set_conf_and_update_lbl_details(self):
+        try:
+            process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && \
+                    cp -f  "{HOME}/.cache/grub-editor/temp.txt"  '+CONF_LOC +' && sudo update-grub 2>&1 \'  '],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                shell=True)
+            self.lbl_details_text='Waiting for authentication \n'
+            
+            self.set_lbl_details()
+            
+            self.lbl_status.setText('Waiting for authentication')
+            # out = process.communicate()[0].decode()
+            # if self.lbl_details is not None:
+            #     printer('setting')
+            #     printer(out,'out')
+            #     self.lbl_details.setText(out)
+            # self.lbl_status.setText('Saved successfully')
+            while True:
+                authentication_complete=False
+                authentication_error=False
+                for line in process.stdout:
+                    if not authentication_complete:
+                        self.lbl_status.setText('Saving configurations')
+                        authentication_complete=True
+                    sys.stdout.write(line.decode())
+                    if 'Error executing command as another user: Not authorized' in line.decode():
+                        authentication_error=True
+                    self.lbl_details_text= self.lbl_details_text+ line.decode()
+                    
+                    #this handles the case where lbldetails hasnt yet been created
+                    if self.lbl_details is not None:
+                        
+                        #this handles the case where lbl_details_text gets deleted after once its been created
+                        try:
+                            self.lbl_details.setText(self.lbl_details_text)
+                        except:
+                            pass
+                break
+
+
+            if not authentication_error:
+                self.lbl_status.setText('Saved successfully')
+            else:
+                self.lbl_status.setText('Authentication error occured')
+                self.lbl_status.setStyleSheet('color: red')
+                    
+        except Exception as e:
+            printer(e)
+            printer('error trying to save the configurations')
+            printer(traceback.format_exc())
+            self.lbl_status.setText('An error occured when saving')
+            self.lbl_status.setStyleSheet('color: red')
+            
+    def onSaveConfsFinish(self):
+        self.setUiElements()
+        self.HLayout_save.itemAt(1).widget().deleteLater()
+        self.loading_bar.setParent(None)
 
     def saveConfs(self):
         """ copies the configuration file from cache to the /etc/default/grub
@@ -904,65 +962,12 @@ class Ui(QtWidgets.QMainWindow):
         """
         self.show_saving()
 
-        def update_lbl_details(self):
-            try:
-                print(f"coping from cache to {CONF_LOC}")
-                process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && \
-                        cp -f  "{HOME}/.cache/grub-editor/temp.txt"  '+CONF_LOC +' && sudo update-grub 2>&1 \'  '],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    shell=True)
-                self.lbl_details_text='Waiting for authentication \n'
-                
-                self.set_lbl_details()
-                
-                self.lbl_status.setText('Waiting for authentication')
-                # out = process.communicate()[0].decode()
-                # if self.lbl_details is not None:
-                #     printer('setting')
-                #     printer(out,'out')
-                #     self.lbl_details.setText(out)
-                # self.lbl_status.setText('Saved successfully')
-                while True:
-                    authentication_complete=False
-                    authentication_error=False
-                    for line in process.stdout:
-                        if not authentication_complete:
-                            self.lbl_status.setText('Saving configurations')
-                            authentication_complete=True
-                        sys.stdout.write(line.decode())
-                        if 'Error executing command as another user: Not authorized' in line.decode():
-                            authentication_error=True
-                        self.lbl_details_text= self.lbl_details_text+ line.decode()
-                        
-                        #this handles the case where lbldetails hasnt yet been created
-                        if self.lbl_details is not None:
-                            
-                            #this handles the case where lbl_details_text gets deleted after once its been created
-                            try:
-                                self.lbl_details.setText(self.lbl_details_text)
-                            except:
-                                pass
-                    break
-
-
-                if not authentication_error:
-                    self.lbl_status.setText('Saved successfully')
-                else:
-                    self.lbl_status.setText('Authentication error occured')
-                    self.lbl_status.setStyleSheet('color: red')
-                        
-            except Exception as e:
-                printer(e)
-                printer('error trying to save the configurations')
-                printer(traceback.format_exc())
-                self.lbl_status.setText('An error occured when saving')
-                self.lbl_status.setStyleSheet('color: red')
-        # threading.Thread(target=final,args=[self]).start()
-        print("Started worker")
+        
         #the variable will be used for testing purposes
-        self.saveConfs_worker=self.startWorker(update_lbl_details,self.setUiElements,None,self)
-        print(self.saveConfs_worker)
+        self.loading_bar =LoadingBar()
+        insert_into(self.HLayout_save,1,self.loading_bar)
+        self.saveConfs_worker=self.startWorker(self.set_conf_and_update_lbl_details,self.onSaveConfsFinish,None)
+        
 
     def checkBox_look_for_other_os_callback(self):
         """ callback handler for checkBox_look_for_other_os
@@ -1101,13 +1106,13 @@ class Ui(QtWidgets.QMainWindow):
 
                 
             btn.setText('Show Details')
+            
     def show_saving(self):
-        print('showing saving')
         if not (self.verticalLayout_2.itemAt(1) and isinstance(self.verticalLayout_2.itemAt(1),QtWidgets.QHBoxLayout)):
     
             #create a label to show user that saving
             self.lbl_status= QtWidgets.QLabel()
-            self.lbl_status.setText('saving do not close')
+            self.lbl_status.setText('Waiting for authentication')
             self.lbl_status.setStyleSheet('color:#03fc6f;')
             
             
@@ -1121,6 +1126,7 @@ class Ui(QtWidgets.QMainWindow):
             
             #create a horizontal layout
             self.HLayout_save= QtWidgets.QHBoxLayout()
+            self.HLayout_save.setContentsMargins(6,0,6,0)
             self.HLayout_save.setObjectName('HLayout_save')
             self.HLayout_save.addWidget(self.lbl_status)
             self.HLayout_save.addWidget(self.btn_show_details)
@@ -1137,7 +1143,6 @@ class Ui(QtWidgets.QMainWindow):
         
         """ if argument is true then it checks configurations for recommendations and errors """
 
-        print("btn_set callback")
         self.recommendations=[]
         self.recmds_fixes=[]
         grub_timeout_value=self.ledit_grub_timeout.text()
@@ -1278,7 +1283,7 @@ class Ui(QtWidgets.QMainWindow):
             worker = Worker(toCall,*args)
             if onFinish is not None:
                 worker.signals.finished.connect(onFinish)
-                print("connected onFInish",onFinish==self.setUiElements)
+                # print("connected onFInish",onFinish==self.setUiElements)
             if onResult is not None:
                 worker.signals.result.connect(onResult)
             self.threadpool.start(worker)
@@ -1351,7 +1356,7 @@ class Ui(QtWidgets.QMainWindow):
     def btn_delete_callback_creator(self,arg):
         def func():
             string =f'rm {HOME}/.grub-editor/snapshots/{arg}'
-            printer(string)
+            # printer(string)
             subprocess.Popen([f'rm \'{HOME}/.grub-editor/snapshots/{arg}\''],shell=True)
             global file_loc
             if file_loc == f'{HOME}/.grub-editor/snapshots/{arg}':
@@ -1476,7 +1481,7 @@ class Ui(QtWidgets.QMainWindow):
             printer(str(e))
 
     def handle_modify(self):
-        print(self.original_modifiers)
+        # print(self.original_modifiers)
         """ handles when the loaded configuration is modified in the apps . 
         it adds "(modified)" to the value of comboBox_configurations  according to the length of self.original_modifiers""" 
         try:
@@ -1488,6 +1493,8 @@ class Ui(QtWidgets.QMainWindow):
             if len(self.original_modifiers)>0:
                 # print(self.original_modifiers)
                 # printer(current_item)
+                self.btn_reset.setEnabled(True)
+                self.btn_set.setEnabled(True)
                 if '(modified)' not in current_item:
                     stringy=current_item+'(modified)'
                     self.comboBox_configurations.blockSignals(True)
@@ -1496,6 +1503,12 @@ class Ui(QtWidgets.QMainWindow):
                     self.comboBox_configurations.setCurrentIndex(self.comboBox_configurations.count()-1)
                     self.comboBox_configurations.blockSignals(False)
             else:
+                self.btn_reset.setEnabled(False)
+                if CONF_LOC in self.configurations[self.comboBox_configurations.currentIndex()]:
+                    self.btn_set.setEnabled(False)
+                else:
+                    self.btn_set.setEnabled(True)
+                
                 index_to_remove =[]
                 self.comboBox_configurations.blockSignals(True)
                 for item in self.configurations:
@@ -1712,7 +1725,6 @@ class SetRecommendations(QtWidgets.QMainWindow):
         def btn_ignore_callback(self):
             clear_layout(HLayout)
         return btn_ignore_callback
-
 
 def main():
     
