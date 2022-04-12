@@ -6,3 +6,6 @@ take note that the None above is actually a string
 
 default way to create snapshots when loaded /etc/grub/default was modified in UI
 create_snapshot:"add_changes_to_snapshot","None","ignore_changes"
+
+show_invalid_default_entry:"True","False","None"
+invalid_kernel_version:"fix","cancel",:None
