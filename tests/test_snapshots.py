@@ -5,7 +5,7 @@ import subprocess
 from time import sleep
 from datetime import datetime as dt
 import re
-
+from tools import change_comboBox_current_index
 PATH = os.path.dirname(os.path.realpath(__file__))
 #get the parent directory
 PATH = PATH[0:-5]
@@ -20,7 +20,7 @@ def test_change_config_modified(qtbot):
     #mw stand for mainWindow
     mw=main.Ui()
     main.MainWindow=mw;
-    curr_ind = mw.comboBox_grub_de
+    curr_ind = mw.comboBox_grub_default.currentIndex()
     for i in  range(len(mw.all_entries)):
         if i!= curr_ind:
             pass
@@ -132,17 +132,10 @@ def test_btn_create_snapshot(qtbot):
 
     
     #get to the edit_configurations tab  and then change something to check if a new windows open ups to ask which
-    #   configuration i want to change
+    #   configuration i want to save to snapshot (from the file or edited one)
     mw.tabWidget.setCurrentIndex(0)
-    curr_ind = mw.comboBox_grub_default.currentIndex()
     
-    for i in  range(len(mw.all_entries)):
-        if i!= curr_ind:
-            pass
-            grub_default_ind = i
-            break
-    
-    mw.comboBox_grub_default.setCurrentIndex(grub_default_ind)
+    change_comboBox_current_index(mw)
     assert '(modified)' in mw.configurations[mw.comboBox_configurations.currentIndex()]
     
     mw.tabWidget.setCurrentIndex(1)
@@ -159,7 +152,7 @@ def test_btn_create_snapshot(qtbot):
         
     assert mw.create_snapshot_dialog.isVisible()
     
-    
+    grub_default_ind = change_comboBox_current_index(mw)
     _test_ignore_changes(qtbot,mw,grub_default_ind)
     
     

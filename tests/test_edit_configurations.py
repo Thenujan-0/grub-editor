@@ -3,7 +3,7 @@ import sys;
 from time import sleep
 from PyQt5 import QtWidgets,QtCore
 import subprocess
-
+from tools import change_comboBox_current_index
 
 HOME =os.getenv('HOME')
 PATH=os.path.dirname(os.path.realpath(__file__))
@@ -36,9 +36,6 @@ def test_grub_timeout_add_substract(qtbot):
     assert mw.ledit_grub_timeout.text() == "0.0"
     qtbot.mouseClick(mw.btn_substract, QtCore.Qt.LeftButton)
     assert mw.ledit_grub_timeout.text() == "0.0"
-    
-    
-    
     
 def test_look_for_other_os(qtbot):
     MainWindow = main.Ui()
@@ -108,8 +105,8 @@ def test_look_for_other_os(qtbot):
     assert mw.lbl_status.text() =="Saved successfully"
     
 def test_comboBox_configurations(qtbot):
-    MainWindow = main.Ui()
-    mw=MainWindow
+    mw = main.Ui()
+    main.MainWindow=mw
     qtbot.addWidget(mw)
     for i in range(len(mw.all_entries)):
         if i != mw.comboBox_grub_default.currentIndex():
@@ -126,5 +123,35 @@ def test_comboBox_configurations(qtbot):
     #check if the correct value for grub default was shown
     assert mw.all_entries[mw.comboBox_grub_default.currentIndex()] ==temp_entry
     
+def test_btn_set(qtbot):
+    mw = main.Ui()
+    main.MainWindow=mw
+    qtbot.addWidget(mw)
+    assert "(modified)" not in mw.configurations[mw.comboBox_configurations.currentIndex()]
+    old_ind=mw.comboBox_grub_default.currentIndex()
     
+    curr_ind =change_comboBox_current_index(mw)
+    print(curr_ind,"currentIndex")
+    new_ind=mw.comboBox_grub_default.currentIndex()
     
+    assert new_ind!=old_ind
+    
+    assert "(modified)" in mw.configurations[mw.comboBox_configurations.currentIndex()]
+    qtbot.mouseClick(mw.btn_set, QtCore.Qt.LeftButton)
+    # while mw.lbl_status.text()!="Saved successfully":
+    #             sleep(1)
+    #             print(mw.lbl_status.text(),"lbl_status  waiting for it to change to Saved successfully")
+    
+    print(mw.saveConfs_worker)
+    # while mw.saveConfs_worker==None:
+    #     sleep(1)
+    with qtbot.waitSignal(mw.saveConfs_worker.signals.finished,raising=True):
+        
+    
+        assert mw.original_modifiers ==[]
+        print(mw.configurations[mw.comboBox_configurations.currentIndex()])
+        assert "(modified)" not in mw.configurations[mw.comboBox_configurations.currentIndex()]
+
+    #     qtbot.mouseClick(mw.btn_reset,QtCore.Qt.LeftButton)
+    # sleep(2)
+    print('yay')
