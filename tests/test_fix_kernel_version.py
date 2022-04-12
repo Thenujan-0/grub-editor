@@ -18,36 +18,37 @@ HOME=os.getenv("HOME")
 def test_fix_kernel_version(qtbot):
     mw=main.Ui()
     main.MainWindow=mw;
-    for val in mw.all_entries:
-        if " >" in val:
-            #match the 14-1- like part of 5.16.14-1-
-            pattern=r'\d+-\d+-'
-            
-            krnl_minor_vrsn=re.search(pattern,val).group(0)
-            print(val)
-            print(krnl_minor_vrsn)
-            
-            
-            ind =krnl_minor_vrsn.find("-")
-            krnl_minor_vrsn_strp=krnl_minor_vrsn[:ind]
-            # new_ind = krnl_minor_vrsn[ind+1:].find("-") +ind
-            # krnl_minor_vrsn = krnl_minor_vrsn[]
-            
-            print(krnl_minor_vrsn_strp)
-            new_krnl_minor_vrsn_strp = str(int(krnl_minor_vrsn_strp)+1)
-            new_krnl_minor_vrsn= krnl_minor_vrsn.replace(krnl_minor_vrsn_strp,new_krnl_minor_vrsn_strp)
-            print(new_krnl_minor_vrsn)
-            new_val = val.replace(krnl_minor_vrsn,new_krnl_minor_vrsn)
-            print(new_val)
-            break
-    
-    mw.close()
-    main.initialize_temp_file()
-    main.set_value("GRUB_DEFAULT=",new_val)
-    subprocess.run([f"pkexec cp {HOME}/.cache/grub-editor/temp.txt /etc/default/grub"],shell=True)
-    mw = main.Ui()
-    main.MainWindow=mw;
-    
+    if len(mw.invalid_entries)==0:
+        for val in mw.all_entries:
+            if " >" in val:
+                #match the 14-1- like part of 5.16.14-1-
+                pattern=r'\d+-\d+-'
+                
+                krnl_minor_vrsn=re.search(pattern,val).group(0)
+                print(val)
+                print(krnl_minor_vrsn)
+                
+                
+                ind =krnl_minor_vrsn.find("-")
+                krnl_minor_vrsn_strp=krnl_minor_vrsn[:ind]
+                # new_ind = krnl_minor_vrsn[ind+1:].find("-") +ind
+                # krnl_minor_vrsn = krnl_minor_vrsn[]
+                
+                print(krnl_minor_vrsn_strp)
+                new_krnl_minor_vrsn_strp = str(int(krnl_minor_vrsn_strp)+1)
+                new_krnl_minor_vrsn= krnl_minor_vrsn.replace(krnl_minor_vrsn_strp,new_krnl_minor_vrsn_strp)
+                print(new_krnl_minor_vrsn)
+                new_val = val.replace(krnl_minor_vrsn,new_krnl_minor_vrsn)
+                print(new_val)
+                break
+        
+        mw.close()
+        main.initialize_temp_file()
+        main.set_value("GRUB_DEFAULT=",new_val)
+        subprocess.run([f"pkexec cp {HOME}/.cache/grub-editor/temp.txt /etc/default/grub"],shell=True)
+        mw = main.Ui()
+        main.MainWindow=mw;
+        
     assert mw.dialog_invalid_default_entry.isVisible()
     
     #First press the cancel button check if window closes and no changes were made to the snapshot/file
