@@ -24,7 +24,6 @@ import logging
 from threading import Thread
 from libs.qt_functools import insert_into, reconnect
 from libs.worker import Worker
-from widgets import chroot
 from widgets.dialog import DialogUi
 from widgets.error_dialog import ErrorDialogUi
 
@@ -308,10 +307,6 @@ class Ui(QtWidgets.QMainWindow):
         self.resized.emit()
         return super(Ui, self).resizeEvent(event)
     
-    def closeEvent(self,*args,**kwargs):
-        super(QtWidgets.QMainWindow, self).__init__()
-        
-        #todo unmount the mounted devices
         
         
     def someFunction(self):
@@ -416,190 +411,9 @@ class Ui(QtWidgets.QMainWindow):
         self.checkBox_show_menu.toggled.connect(self.checkBox_show_menu_on_toggle)
         self.btn_reset.clicked.connect(self.btn_reset_callback)
         self.checkBox_look_for_other_os.clicked.connect(self.checkBox_look_for_other_os_callback)
-        self.tabWidget.currentChanged.connect(self.tabWidget_current_changed)
 
-        #add chroot to tab
-
-
-        self.chroot_loading = chroot.ChrootLoadingUi()
-        self.tabWidget.addTab(self.chroot_loading, "Chroot")
-        self.chroot_status='loading'
-        
-        
-        # self.chroot.groupBox_3 = QtWidgets.QGroupBox(self.chroot)
-        # self.chroot.groupBox_3.setObjectName("groupBox_3")    # random_number = str(random())
-    # keyboard = [
-    #             [InlineKeyboardButton('You lost' , callback_data='callback_1')],
-    #             [InlineKeyboardButton('Click button 1 ' + random_number, callback_data='callback_2')]
-    #         ]
-
-    # reply_markup = InlineKeyboardMarkup(keyboard)
-    # update.callback_query.edit_message_reply_markup(reply_markup)
-        # self.chroot.gridLayout_9 = QtWidgets.QGridLayout(self.chroot.groupBox_3)
-        # self.chroot.gridLayout_9.setObjectName("gridLayout_9")
-        # self.chroot.verticalLayout_3 = QtWidgets.QVBoxLayout()
-        # self.chroot.verticalLayout_3.setObjectName("verticalLayout_3")
-        # self.chroot.listWidget = QtWidgets.QListWidget(self.chroot.groupBox_3)
-        # self.chroot.listWidget.setObjectName("listWidget")
-        # self.chroot.verticalLayout_3.addWidget(self.chroot.listWidget)
-        # self.chroot.gridLayout_9.addLayout(self.chroot.verticalLayout_3, 1, 0, 1, 1)
-        # self.chroot.VLyout_chroot.addWidget(self.chroot.groupBox_3)
-        
-        #if chroot window has been build with the os-prober entries
-        self.chroot_os_initialized=False
         
 
-    def tabWidget_current_changed(self,index):
-        if index ==2 and not self.chroot_os_initialized:
-            self.update_chroot_os()
-    
-
-    def update_chroot_os(self):
-        """ add the available operating systems to chroot tab """
-        pid =os.getpid()
-        server_p=subprocess.Popen([f'pkexec python3 {PATH}/libs/chrooter.py -p {pid}'],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,shell=True)
-        self.chroot=chroot.ChrootUi()
-        
-        def handle_server_p_error():
-            self.chroot_os_initialized= False
-            #todo tell the user that authentication wasnt finished sucessfully
-            
-        def check_server_p_out(worker):
-            ''' find out if authentication was cancelled in pkexec '''
-            print('reading output of server')
-            for line in server_p.stdout:
-                server_p.stdout.flush()
-                if "Error executing command as another user: Not authorized" in line.decode():
-                    worker.signals.error.emit(())
-                print('line is ',line.decode())
-                break
-        worker1 = Worker(check_server_p_out,worker=None)
-        worker1.kwargs['worker']=worker1
-        worker1.signals.error.connect(handle_server_p_error)    
-        self.threadpool.start(worker1)
-        
-        
-        def onResult(result):
-            
-            #somehow this funtion gets called with None as arg still havnt figured out how 
-            if result is not None:
-                result=eval(result)
-                operating_systems,partitions =result
-                if not operating_systems:
-                    self.error_getOs=ErrorDialogUi()
-                    self.error_getOs.set_error_title("Failed to get installed operating systems")
-                    self.error_getOs.set_error_body("os-prober returned error prbably because another os-prober process hasn't exited yet.Please try again in few seconds ")
-                    self.error_getOs.show()
-                    self.tabWidget.setCurrentIndex(0)
-                
-                for i,os in enumerate(operating_systems):
-                    partition =partitions[i]
-                    item=QtWidgets.QListWidgetItem(os+" on "+partition)
-                    self.chroot.listWidget.addItem(item)
-                self.chroot.listWidget.itemClicked.connect(self.listWidget_itemClicked_callback)
-
-                self.chroot_os_initialized=True
-                self.chroot_loading.deleteLater()
-                self.tabWidget.removeTab(2)
-                self.tabWidget.addTab(self.chroot,'Chroot')
-                self.chroot_status='before'
-                self.tabWidget.setCurrentIndex(2)
-        
-        def onEveryLine(outputLine):
-            text =self.chroot_loading.lbl_os_prober_output.text()
-            self.chroot_loading.lbl_os_prober_output.setText(text+outputLine)
-        
-        def recieve_os(worker):
-
-    
-            context=zmq.Context()
-            socket=context.socket(zmq.REQ)
-    
-            socket.connect("tcp://localhost:5556")
-    
-            #send  request asking for operating systems and partitions
-            
-            #we are going to ask again and again until it finishes every line in output of 
-            # while True:
-                
-            socket.send(b"get_os")
-            
-            while True:
-                message= socket.recv().decode()
-                words= message.split()
-                space_index=message.find(' ')
-                if words[0]=='partial':
-                    print('emiting on line')
-                    worker.signals.output.emit(message[space_index+1:])
-                    # if message=='finished':
-                        # break
-                elif words[0]=='final':
-                    print('emitting result')
-                    worker.signals.result.emit(message[space_index+1:])
-                    break
-                
-                else:
-                    print("Error recieved message from chrooter is in unhandled case")
-                    print(message,'is the message recieved from chrooter')
-                socket.send(b'recieved')
-            print('broke out from the message loop')
-            # if message is not None:
-            #     worker.signals.result.emit(message)
-            # print(message,'message')
-
-        worker = Worker(recieve_os,worker=None)
-        worker.kwargs['worker']=worker
-        
-        worker.signals.result.connect(onResult)
-        worker.signals.output.connect(onEveryLine)
-        self.threadpool.start(worker)
-        
-        self.chroot_os_initialized=True
-        
-        #failed to get operating_systems from os-prober probably because another os-prober is being executed
-        
-        
-    def btn_exit_chroot_callback(self):
-        self.chroot_after.deleteLater()
-        self.tabWidget.removeTab(2)
-        # self.chroot=chroot.ChrootUi()
-        self.tabWidget.addTab(self.chroot,'Chroot')
-        self.chroot_status='before'
-        # self.update_chroot_os()
-        self.tabWidget.setCurrentIndex(2)
-
-    def listWidget_itemClicked_callback(self, item):
-        print(item.text())
-        partition = item.text()[-9:]
-        print(partition)
-        context =zmq.Context()
-        socket = context.socket(zmq.REQ)
-        socket.connect('tcp://localhost:5556')
-        socket.send(bytes(f'chroot {partition}','ascii'))
-        socket.recv()
-        
-        
-        
-        if self.chroot_status == 'before':
-            # self.chroot.deleteLater()
-            self.tabWidget.removeTab(2)
-            
-            global MainWindow
-            self.chroot_after=chroot.ChrootAfterUi(MainWindow,partition)
-            self.tabWidget.addTab(self.chroot_after,'Chroot')
-            self.chroot_status='after'
-            
-            
-            self.tabWidget.setCurrentIndex(2)
-            self.chroot_after.btn_exit_chroot.clicked.connect(self.btn_exit_chroot_callback)
-
-
-        else:
-            self.chroot_after.deleteLater()
-            self.tabWidget.removeTab(2)
-            self.chroot=chroot.ChrootUi()
-            self.tabWidget.addTab(self.chroot,'Chroot')
-            self.chroot_status='before'
 
 
 
