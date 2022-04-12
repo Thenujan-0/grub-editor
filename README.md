@@ -8,5 +8,3 @@ It workes by editing the /etc/default/grub
 ![Screenshots](screenshots/grub-editor0.png)
 ![Screenshots](screenshots/grub-editor1.png)
 ![Screenshots](screenshots/grub-editor2.png)
-![Screenshots](screenshots/grub-editor3.png)
-![Screenshots](screenshots/grub-editor4.png)
