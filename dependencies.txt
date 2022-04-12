@@ -1,2 +1,0 @@
-python-elevate
-python-pyzmq
