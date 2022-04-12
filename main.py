@@ -693,6 +693,8 @@ class Ui(QtWidgets.QMainWindow):
             # printer(self.all_entries)
             # grub_default_val=grub_default_val.replace('>',' >')
             try:
+                if grub_default_val in self.invalid_entries:
+                    self.handle_invalid_default_entry(grub_default_val)
                 self.comboBox_grub_default.setCurrentIndex(self.all_entries.index(grub_default_val))    
             except ValueError:
                 
