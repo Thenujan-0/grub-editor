@@ -5,7 +5,6 @@ from PyQt5 import QtCore ,QtWidgets, uic,QtGui
 from PyQt5.QtWidgets import QMainWindow, QLabel
 from PyQt5.QtWidgets import QGridLayout, QWidget, QDesktopWidget
 
-
 import sys
 from functools import partial
 import re
@@ -23,7 +22,7 @@ import math
 import zmq
 import logging
 from threading import Thread
-from libs.qt_functools import reconnect
+from libs.qt_functools import insert_into, reconnect
 from libs.worker import Worker
 from widgets import chroot
 from widgets.dialog import DialogUi
@@ -190,55 +189,100 @@ def initialize_temp_file(file_path="/etc/default/grub"):
     """copies the file to ~/.cache/grub-editor/temp.txt so that set_value can start writing changes to it"""
     subprocess.run([f'cp \'{file_path}\' {HOME}/.cache/grub-editor/temp.txt'],shell=True)
       
-default_preference="""{
-      "view_default": "None",
-      "create_snapshot":"None"
-}"""
 
+
+#stores the possible values of user preferences
+preferences={"view_default":["on_the_application_itself","default_text_editor","None"],
+             "create_snapshot":["add_changes_to_snapshot","None","ignore_changes"],
+             "invalid_kernel_version":["fix","cancel","None"],
+             "show_invalid_default_entry":["True","False","None"]
+             }
+
+def init_pref_file():
+    with open(f'{HOME}/.grub-editor/preferences/main.json','w') as file :
+        file.write("")
+        
 def get_preference(key):
+    # print('get pref  was called')
+    
+    #to avoid typos in string causing bugs
+    if key not in preferences.keys():
+        raise Exception("Key passed to the get_preference is not valid")
+    
     subprocess.run([f'mkdir -p {HOME}/.grub-editor/preferences/'],shell=True)
     
     if not os.path.exists(f'{HOME}/.grub-editor/preferences/main.json'):
-        with open(f'{HOME}/.grub-editor/preferences/main.json','w') as file :
-            file.write(default_preference)
+        # print("initializing preference file")
+        init_pref_file()
         
-    file = open(f'{HOME}/.grub-editor/preferences/main.json')
-    try:
-        pref_dict =json.load(file)
-    except Exception as e:
-        file.close()
-        printer(e)
-        printer(traceback.format_exc())
-        printer('This exception was handled with ease 😎')
-        with open(f'{HOME}/.grub-editor/preferences/main.json','w') as file:
-            file.write(default_preference)
-            
+    with  open(f'{HOME}/.grub-editor/preferences/main.json') as file:
+        try:
+            data=file.read()
+            # print(data,"data of the json file")
+            if data !="":
+                pref_dict =json.loads(data)
+        except Exception as e:
+            printer(e)
+            printer(traceback.format_exc())
+            printer('This exception was handled with ease 😎')
+            init_pref_file()
+            set_preference
+                
             
     #reopen the file and then read it
-    file = open(f'{HOME}/.grub-editor/preferences/main.json')
-    pref_dict =json.load(file)
-    file.close()
-    value = pref_dict[key]
+    with  open(f'{HOME}/.grub-editor/preferences/main.json') as file:
+        data=file.read()
+        # print(data)
+        if data!="":
+            pref_dict =json.loads(data)
+            try:
+                value = pref_dict[key]
+            except KeyError:
+                set_preference(key,"None")
+                value="None"
+        else:
+            set_preference(key,"None")
+            value="None"
+
         
     return value
 
 def set_preference(key,value):
+    print('set pref  was called')
+    valid_key=False
+    #to avoid typos in string causing bugs
+    for  pref_key ,pref_val  in preferences.items():
+        if key==pref_key:
+            valid_key=True
+            valid_val=False
+            for possible_val in pref_val:
+                if possible_val==value:
+                    valid_val=True
+                    break
+            if not valid_val:
+                raise Exception("Value passed to the set_preference is not valid")
+
+
+    if not valid_key:
+        raise Exception("Key passed to the get_preference is not valid")
     
     subprocess.run([f'mkdir -p {HOME}/.grub-editor/preferences/'],shell=True)
     
     if os.path.exists(f'{HOME}/.grub-editor/preferences/main.json'):
-        file = open(f'{HOME}/.grub-editor/preferences/main.json')
-        pref_dict =json.load(file)
-        pref_dict[key]=value
-        file.close()
-    
+        with open(f'{HOME}/.grub-editor/preferences/main.json') as file:
+            try:
+                pref_dict =json.load(file)
+                pref_dict[key]=value
+            except:
+                init_pref_file()
+                pref_dict={key:value}
+        
         
     
-    pref_file = open(f'{HOME}/.grub-editor/preferences/main.json', "w")
+    with open(f'{HOME}/.grub-editor/preferences/main.json', "w") as pref_file:
     
-    json.dump(pref_dict, pref_file, indent = 6)
+        json.dump(pref_dict, pref_file, indent = 4)
     
-    pref_file.close()
 
 
 
@@ -679,13 +723,135 @@ class Ui(QtWidgets.QMainWindow):
                 self.original_modifiers.remove(ledit)
         self.handle_modify()
 
+    def handle_invalid_default_entry(self,invalid_value):
+        pref_show = get_preference("show_invalid_default_entry")
         
+        def create_win(btn_cancel=True):
+            ''' Creates a window to show that the grub default has an invalid default entry '''
+                # print(btn_cancel)
+            self.dialog_invalid_default_entry=DialogUi(btn_cancel=btn_cancel)
+            self.dialog_invalid_default_entry.label.setText("/etc/grub/default currently has an invalid default entry")
+            self.dialog_invalid_default_entry.show()
+        
+        def set_fixer(crct_value):
+            ''' Adds the fix btn to the invalid_default_entry_dialog or does the action preffered by
+            the user pereference file'''
+            pref_fix = get_preference("invalid_kernel_version")
+            
+            def fix(read_checkbox=True):
+                ''' Fixes the invalid entry '''
+                
+                print('editing the file from',file_loc,'to fix kernel version')
+                # print(value,'value--------------------------')
+
+                if file_loc ==CONF_LOC:
+                    initialize_temp_file(file_loc)
+                    self.saveConfs()
+                else:
+                    set_value('GRUB_DEFAULT=',crct_value,target_file=file_loc)
+                
+                if read_checkbox and dwin.checkBox.isChecked():
+                    set_value("invalid_kernel_version","fix")
+                
+                
+                # set_value("GRUB_DEFAULT=",crct_value)
+                # print('set grub default to the correct one')
+                # self.show_saving()
+                
+                self.setUiElements()
+                dwin.close()
+            if pref_fix=="None":
+                dwin = self.dialog_invalid_default_entry
+                dwin.btn_ok.setText('Fix')
+                dwin.checkBox.setText("Do this everytime")
+                dwin.resize(500,180)
+                
+                if file_loc ==CONF_LOC:
+                    file_name = CONF_LOC
+                    dwin.label.setText(f'{file_name} currently has an invalid default entry. It is because of a kernel update . Do you want Grub editor to fix it for you?')
+                    
+                elif f'{HOME}/.grub-editor/snapshots/' in  file_loc:
+                    file_name=file_loc.replace(f'{HOME}/.grub-editor/snapshots/','')
+                    dwin.label.setText(f'snapshot you selected ({file_name}) currently has an invalid default entry. It is because of a kernel update . Do you want Grub editor to fix it for you?')
+                    
+                else:
+                    printer("Error unknown condition when checking file_loc")
+                    printer(file_loc)
+                
+                
+                
+                    
+                def cancel(read_checkbox=True):
+                    if read_checkbox and dwin.checkBox.isChecked():
+                        set_value("invalid_kernel_version","cancel")
+                    dwin.close()
+                    
+                dwin.btn_ok.clicked.connect(fix)
+                dwin.btn_ok.clicked.connect(cancel)
+            elif pref_fix=="fix":
+                fix()
+            elif pref_fix=="cancel":
+                #Program actually doesnt have to do anything it its cancel so...
+                pass
+        
+        #find out if created a unique dialog_window
+        # unique_dialog_win= False
+        # print(unique_dialog_win,'unique_dialog_win')
+        crct_value= None
+        index = invalid_value.find('(Kernel: ')
+        for value in self.all_entries:
+            
+            #check if the part before the kernel is same
+            if invalid_value[:index]== value[:index]:
+                
+                pattern=r'\d.\d+'
+                krnl_major_vrsn=re.search(pattern,invalid_value).group(0)
+                krnl_major_vrsn2 = re.search(pattern,value).group(0)
+                # print(value ,krnl_major_vrsn2,krnl_major_vrsn)
+                if krnl_major_vrsn2 == krnl_major_vrsn:
+                    
+                    #if the invalid contains fallback then the non invalid should also contain initramfs
+                    #todo find out why this returns unexpected value
+                    # condition =   ('fallback initramfs)' in value ) ^ ('fallback intramfs)' in invalid_value )
+                    
+                    #to avoid some unexpected behavior by python
+                    first =('fallback initramfs)' in value )
+                    second = ('fallback initramfs)' in invalid_value )
+                    
+                    condition = not (first ^ second)
+                    
+                    if condition and (value != invalid_value):
+                        # print('the right one ',invalid_value,value)
+                        crct_value =value
+                        break
+        if pref_show=="None":
+            create_win(True)
+            
+        if crct_value != None:
+            set_fixer(crct_value)
+        # unique_dialog_win =True
+                        
+                            
+        # if not unique_dialog_win:
+        #     create_win()
+        current_is_invalid=False
+        for entry in self.invalid_entries:
+            if entry == self.all_entries[self.comboBox_grub_default.currentIndex()]:
+                self.comboBox_grub_default.setStyleSheet("""QComboBox {
+        background: #ff5145;
+        color:black;
+        }""")
+                current_is_invalid=True
+                break
+        if not current_is_invalid:
+            self.comboBox_grub_default.setStyleSheet("")
+    
     def set_comboBox_grub_default(self,show_invalid_default=False):
         """ sets the right index to comboBox_grub_default and radio buttons,
         if second argument is true then it will check if the grub default value is invalid and if it is invalid it will show a dialog"""
         
         grub_default_val =get_value('GRUB_DEFAULT=',self.issues)
-        print(grub_default_val,'grb default val')
+        # print(grub_default_val,'grb default val')
 
 
         # print('checking for invalid entry')
@@ -739,117 +905,20 @@ class Ui(QtWidgets.QMainWindow):
                     model.setData(model.index(len(self.all_entries)-1, 0), QtGui.QColor("black"), QtCore.Qt.ForegroundRole)
                     self.comboBox_grub_default.setCurrentIndex(len(self.all_entries)-1)
                 else:
-                    index =self.all_entries.index(invalid_value)
-                    self.comboBox_grub_default.setCurrentIndex(index)
+                    raise Exception("Unexpected case when processing invalid GRUB_DEFAULT value")
+                self.handle_invalid_default_entry(invalid_value)
                 
                 
-                def create_win(btn_cancel=True):
-                    # print(btn_cancel)
-                    self.dialog_invalid_default_entry=DialogUi(btn_cancel=btn_cancel)
-                    self.dialog_invalid_default_entry.label.setText("/etc/grub/default currently has an invalid default entry")
-                    self.dialog_invalid_default_entry.show()
-                
-                
-                #find out if created a unique dialog_window
-                unique_dialog_win= False
-                # print(unique_dialog_win,'unique_dialog_win')
-                
-                index = invalid_value.find('(Kernel: ')
-                for value in self.all_entries:
-                    
-                    #check if the part before the kernel is same
-                    if invalid_value[:index]== value[:index]:
-                        
-                        pattern=r'\d.\d+'
-                        krnl_major_vrsn=re.search(pattern,invalid_value).group(0)
-                        krnl_major_vrsn2 = re.search(pattern,value).group(0)
-                        # print(value ,krnl_major_vrsn2,krnl_major_vrsn)
-                        if krnl_major_vrsn2 == krnl_major_vrsn:
-                            
-                            #if the invalid contains fallback then the non invalid should also contain initramfs
-                            #todo find out why this returns unexpected value
-                            # condition =   ('fallback initramfs)' in value ) ^ ('fallback intramfs)' in invalid_value )
-                            
-                            #to avoid some unexpected behavior by python
-                            first =('fallback initramfs)' in value )
-                            second = ('fallback initramfs)' in invalid_value )
-                            
-                            condition = not (first ^ second)
-                            
-                            if condition and (value != invalid_value):
-                                # print('the right one ',invalid_value,value)
-                                crct_value =value
-                                
-                                create_win(True)
-                                dwin = self.dialog_invalid_default_entry
-                                dwin.btn_ok.setText('Fix')
-                                if file_loc ==CONF_LOC:
-                                    file_name = CONF_LOC
-                                    dwin.label.setText(f'{file_name} currently has an invalid default entry. It is because of a kernel update . Do you want Grub editor to fix it for you?')
-                                    
-                                elif f'{HOME}/.grub-editor/snapshots/' in  file_loc:
-                                    file_name=file_loc.replace(f'{HOME}/.grub-editor/snapshots/','')
-                                    dwin.label.setText(f'snapshot you selected ({file_name}) currently has an invalid default entry. It is because of a kernel update . Do you want Grub editor to fix it for you?')
-                                    
-                                else:
-                                    printer("Error unknown condition when checking file_loc")
-                                    printer(file_loc)
-                                
-                                
-                                def fix():
-                                    print('editing the file from',file_loc,'to fix kernel version')
-                                    initialize_temp_file(file_loc)
-                                    # print(value,'value--------------------------')
-                                    
-                                    
-                                    if '>' in crct_value:
-                                        
-                                        front_part=crct_value[:crct_value.find(' >')]
-                                        last_part=crct_value[crct_value.find('>'):]
-                                        # print(front_part,last_part)
-                                        to_write=front_part+last_part
-                                        set_value('GRUB_DEFAULT=',to_write,target_file=file_loc)
-                                        # printer('called:''GRUB_DEFAULT=',to_write)
-                                        # printer(to_write+'part to be written')
-                                    else:
-                                        set_value('GRUB_DEFAULT=',crct_value,target_file=file_loc)
-                                    
-                                    
-                                    
-                                    # set_value("GRUB_DEFAULT=",crct_value)
-                                    # print('set grub default to the correct one')
-                                    # self.show_saving()
-                                    # self.saveConfs(target=file_loc)
-                                    self.setUiElements()
-                                    dwin.close()
-                                def cancel():
-                                    dwin.close()
-                                dwin.btn_ok.clicked.connect(fix)
-                                dwin.btn_ok.clicked.connect(cancel)
-                                unique_dialog_win =True
-                                
-                                    
-                if not unique_dialog_win:
-                    create_win()
-        current_is_invalid=False
-        for entry in self.invalid_entries:
-            if entry == self.all_entries[self.comboBox_grub_default.currentIndex()]:
-                self.comboBox_grub_default.setStyleSheet("""QComboBox {
-  background: #ff5145;
-  color:black;
-}""")
-                current_is_invalid=True
-                break
-        if not current_is_invalid:
-            self.comboBox_grub_default.setStyleSheet("")
+
 
 
                 
-    def setUiElements(self,reload_confs=True,show_issues=True,only_snapshots=False):
+    def setUiElements(self,show_issues=True,only_snapshots=False):
         """reloads the ui elements that should be reloaded
             when show issues is true it will show a dialog if the grub default value is invalid
         
         """
+        print("setUiElements was called")
         if not only_snapshots:
             try:
                 #catch error that might occur when self.configurations is not initialized
@@ -913,12 +982,15 @@ class Ui(QtWidgets.QMainWindow):
             elif get_value('GRUB_TIMEOUT_STYLE=',self.issues)=='menu':
                 self.checkBox_show_menu.setChecked(True)
 
-            self.set_comboBox_grub_default(show_invalid_default=show_issues)
+            
                 
             if get_value('GRUB_TIMEOUT=',self.issues)=='-1' or get_value('GRUB_TIMEOUT=',self.issues)=='None':
                 self.checkBox_boot_default_entry_after.setChecked(False)
             else:
                 self.checkBox_boot_default_entry_after.setChecked(True)
+                
+                
+            self.set_comboBox_grub_default(show_invalid_default=show_issues)
             
         self.createSnapshotList()
 
@@ -932,6 +1004,8 @@ class Ui(QtWidgets.QMainWindow):
             else:
                 # raise Exception("Unknown value for GRUB_DISABLE_OS_PROBER",value)
                 printer(f"Unknown value for GRUB_DISABLE_OS_PROBER {value} in {file_loc}")
+        if not only_snapshots:
+            self.original_modifiers=[]
         self.handle_modify()
         
         
@@ -1009,14 +1083,18 @@ class Ui(QtWidgets.QMainWindow):
         else:
             set_value("GRUB_DISABLE_OS_PROBER=","true")
 
-    def saveConfs(self,target=CONF_LOC):
-        """ copies the configuration file from cache to the target(/etc/default/grub) """
-        
+    def saveConfs(self):
+        """ copies the configuration file from cache to the /etc/default/grub
+            It is not useful to call this function if editing target doesnt require root privilages
+            as you can just use set_value to set any value directly
+        """
+        self.show_saving()
 
-        def final(self):
+        def update_lbl_details(self):
             try:
+                print(f"coping from cache to {CONF_LOC}")
                 process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && \
-                        cp -f  "{HOME}/.cache/grub-editor/temp.txt"  '+target +' && sudo update-grub 2>&1 \'  '],
+                        cp -f  "{HOME}/.cache/grub-editor/temp.txt"  '+CONF_LOC +' && sudo update-grub 2>&1 \'  '],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     shell=True)
@@ -1067,7 +1145,10 @@ class Ui(QtWidgets.QMainWindow):
                 self.lbl_status.setText('An error occured when saving')
                 self.lbl_status.setStyleSheet('color: red')
         # threading.Thread(target=final,args=[self]).start()
-        self.startWorker(final,self.setUiElements,None,self)
+        print("Started worker")
+        #the variable will be used for testing purposes
+        self.saveConfs_worker=self.startWorker(update_lbl_details,self.setUiElements,None,self)
+        print(self.saveConfs_worker)
 
     def checkBox_look_for_other_os_callback(self):
         """ callback handler for checkBox_look_for_other_os
@@ -1152,7 +1233,6 @@ class Ui(QtWidgets.QMainWindow):
         self.handle_modify()
         # print('setUi elems was called')
 
-        #todo : fix that changes made in ui get lost when creating a snapshot
 
 
     def btn_show_details_callback(self,tab):
@@ -1208,6 +1288,7 @@ class Ui(QtWidgets.QMainWindow):
                 
             btn.setText('Show Details')
     def show_saving(self):
+        print('showing saving')
         if not (self.verticalLayout_2.itemAt(1) and isinstance(self.verticalLayout_2.itemAt(1),QtWidgets.QHBoxLayout)):
     
             #create a label to show user that saving
@@ -1239,11 +1320,10 @@ class Ui(QtWidgets.QMainWindow):
             
             
     def btn_set_callback(self,unsafe=False):
-
+        
         """ if argument is true then it checks configurations for recommendations and errors """
 
-        #todo check if the interrupt variable usage in here actually does what i expect
-
+        print("btn_set callback")
         self.recommendations=[]
         self.recmds_fixes=[]
         grub_timeout_value=self.ledit_grub_timeout.text()
@@ -1262,7 +1342,7 @@ class Ui(QtWidgets.QMainWindow):
         
         
         
-        self.show_saving()
+        # self.show_saving()
         # printer(interrupt,'interrupt')
         if not unsafe:
             if  len(self.recommendations)==0:
@@ -1342,10 +1422,11 @@ class Ui(QtWidgets.QMainWindow):
                 #printer(end-start)
                 else:
                     self.lbl_status.setText('waiting for authentication')
-                    
-                self.startWorker(self.final,self.setUiElements,None,line)
-                if self.dialog_invalid_default_entry :
-                    self.dialog_invalid_default_entry.close()
+                    # self.show_saving()
+                    self.startWorker(self.update_lbl_status,self.setUiElements,None,line)
+                    if self.dialog_invalid_default_entry :
+                        self.dialog_invalid_default_entry.close()
+                
 
 
             #check if snapshot's default os is a valid one 
@@ -1363,6 +1444,7 @@ class Ui(QtWidgets.QMainWindow):
 
             else:
                 set_snapshot()
+                
 
 
             # printer(f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
@@ -1376,18 +1458,23 @@ class Ui(QtWidgets.QMainWindow):
 
     def startWorker(self,toCall,onFinish=None,onResult=None,*args):
         try:
-            """ arguments are funtion to run , funtion to call when finishes ,function to call with result if no errors occured, arugments of the first funtion """
+            """ arguments are funtion to run , funtion to call when finishes ,function to call with result if no errors occured, 
+            arugments of the first funtion 
+            return the worker object for testing needs"""
             worker = Worker(toCall,*args)
             if onFinish is not None:
                 worker.signals.finished.connect(onFinish)
+                print("connected onFInish",onFinish==self.setUiElements)
             if onResult is not None:
                 worker.signals.result.connect(onResult)
             self.threadpool.start(worker)
+            
+            return worker
         except Exception as e:
             printer(traceback.format_exc())
             printer(str(e))
         
-    def final(self,line):
+    def update_lbl_status(self,line):
         try:
             # print('executing the command')
             # print(f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
@@ -1575,7 +1662,7 @@ class Ui(QtWidgets.QMainWindow):
             printer(str(e))
 
     def handle_modify(self):
-        
+        print(self.original_modifiers)
         """ handles when the loaded configuration is modified in the apps . 
         it adds "(modified)" to the value of comboBox_configurations  according to the length of self.original_modifiers""" 
         try:
@@ -1801,10 +1888,9 @@ class SetRecommendations(QtWidgets.QMainWindow):
         def btn_fix_callback(self):
             fix()
             clear_layout(HLayout)
-
             if verticalLayout_2.count() == 0:
                 MainWindow.set_recommendations_window.close()
-                MainWindow.btn_set_callback()       
+                MainWindow.btn_set_callback()
 
         return btn_fix_callback
 
@@ -1818,6 +1904,7 @@ def main():
     
     global app
     app =QtWidgets.QApplication(sys.argv)
+    app.setWindowIcon(QtGui.QIcon(f'/usr/share/pixmaps/grub-editor.png'))
     global MainWindow
     MainWindow=Ui()
     sys.exit(app.exec_())
