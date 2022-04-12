@@ -1,11 +1,11 @@
 [Desktop Entry]
 Categories=Utility;System;
-Comment[en_US]=GUI to edit grub
-Comment=GUI to edit grub
+Comment[en_US]=GUI to edit grub configurations
+Comment=GUI to edit grub configurations
 Exec=/opt/grub-editor/__main__.py
 GenericName[en_US]=
 GenericName=
-Icon=preferences-system
+Icon=grub-editor
 MimeType=
 Name[en_US]=Grub Editor
 Name=Grub Editor
