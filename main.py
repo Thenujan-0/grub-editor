@@ -705,7 +705,6 @@ class Ui(QtWidgets.QMainWindow):
                 self.comboBox_grub_default.setCurrentIndex(self.all_entries.index(grub_default_val))    
             except ValueError:
                 
-                
                 #add the invalid entry to the combo box
                 invalid_value=get_value('GRUB_DEFAULT=',self.issues)
 
@@ -1236,7 +1235,7 @@ class Ui(QtWidgets.QMainWindow):
                     not (self.verticalLayout_2.itemAt(2) and isinstance(self.verticalLayout_2.itemAt(2),QtWidgets.QHBoxLayout)):
                     #create a label to show user that saving
                     self.lbl_status= QtWidgets.QLabel(self.edit_configurations)
-                    self.lbl_status.setText('waiting for authentication')
+                    self.lbl_status.setText('Waiting for authentication')
                     self.lbl_status.setStyleSheet('color:#03fc6f;')
                     
                     
@@ -1258,9 +1257,9 @@ class Ui(QtWidgets.QMainWindow):
                 else:
                     self.lbl_status.setText('waiting for authentication')
                     # self.show_saving()
-                    self.startWorker(self.update_lbl_status,self.setUiElements,None,line)
-                    if self.dialog_invalid_default_entry :
-                        self.dialog_invalid_default_entry.close()
+                self.set_snapshot_worker=self.startWorker(self.update_lbl_status,self.setUiElements,None,line)
+                if self.dialog_invalid_default_entry :
+                    self.dialog_invalid_default_entry.close()
                 
 
 
