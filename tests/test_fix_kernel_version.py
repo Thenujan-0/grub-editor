@@ -41,7 +41,7 @@ def test_fix_kernel_version(qtbot):
                 new_val = val.replace(krnl_minor_vrsn,new_krnl_minor_vrsn)
                 print(new_val)
                 break
-        
+        print("changing the current entry to invalid")
         mw.close()
         main.initialize_temp_file()
         main.set_value("GRUB_DEFAULT=",new_val)
@@ -71,6 +71,18 @@ def test_fix_kernel_version(qtbot):
     assert mw.dialog_invalid_default_entry.isVisible()
     
     assert mw.comboBox_grub_default.currentIndex() == len(mw.all_entries)-1
+    
+    qtbot.mouseClick(mw.dialog_invalid_default_entry.btn_ok, QtCore.Qt.LeftButton)
+    
+    assert not mw.dialog_invalid_default_entry.isVisible()
+    issues=[]
+    with qtbot.waitSignal(mw.saveConfs_worker.signals.finished,timeout=30*1000):
+        pass
+    new_default_val = main.get_value("GRUB_DEFAULT=",issues)
+    
+    assert issues ==[]
+    assert new_default_val in mw.all_entries 
+    assert new_default_val not in mw.invalid_entries
         
     
     

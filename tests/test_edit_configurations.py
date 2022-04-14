@@ -42,26 +42,46 @@ def test_look_for_other_os(qtbot):
     mw=MainWindow
     qtbot.addWidget(mw)
     
-    cb=mw.checkBox_look_for_other_os
+    cb =mw.checkBox_look_for_other_os
+    
+    
+    if  not cb.isChecked():
+        main.initialize_temp_file()
+        main.set_value("GRUB_DISABLE_OS_PROBER=","false")
+        mw.saveConfs()
+    
+    
+    #h
+        with qtbot.waitSignal(mw.saveConfs_worker.signals.finished,timeout=30*1000):
+            pass
+    
+
+    
+    
+    
+    mw.setUiElements()
+    
+    
+    assert cb.isChecked() ==True
+    assert not mw.btn_set.isEnabled()
+    
+    # mw.checkBox_look_for_other_os.setChecked(False)
     cb.setChecked(False)
+    cb.clicked.emit()    
     
     assert cb.isChecked() ==False  
 
-    main.set_value("GRUB_DISABLE_OS_PROBER=","false")
+    assert mw.btn_set.isEnabled()
     
-    save_btn=mw.btn_set
     qtbot.mouseClick(mw.btn_set, QtCore.Qt.LeftButton)
-    sleep(1)
     assert mw.lbl_status.text() =="Waiting for authentication"
-    sleep(3)
     
-    #might fail if password wasnt entered in 3 seconds
+    while mw.lbl_status.text() =="Waiting for authentication":
+        sleep(1)
+    
     assert mw.lbl_status.text() =="Saving configurations"
-    while True:
-        if mw.lbl_status.text()=="Saving configurations":
-            sleep(1)
-        else:
-            break
+    while  mw.lbl_status.text()=="Saving configurations":
+        sleep(1)
         
         
  
@@ -82,18 +102,14 @@ def test_look_for_other_os(qtbot):
 
     main.set_value("GRUB_DISABLE_OS_PROBER=","true")
     
-    save_btn=mw.btn_set
-    #todo
     qtbot.mouseClick(mw.btn_set, QtCore.Qt.LeftButton)
-    sleep(1)
     assert mw.lbl_status.text() =="Waiting for authentication"
-    sleep(3)
+    while mw.lbl_status.text()=='Waiting for authentication':
+        sleep(1)
     assert mw.lbl_status.text() =="Saving configurations"
-    while True:
-        if mw.lbl_status.text()=="Saving configurations":
-            sleep(1)
-        else:
-            break
+    
+    while mw.lbl_status.text()=="Saving configurations":
+        sleep(1)
         
         
 
@@ -117,6 +133,7 @@ def test_comboBox_configurations(qtbot):
     snapshot_test="""GRUB_DEFAULT="""
     subprocess.run([f' echo "{snapshot_test}" > {HOME}/.grub-editor/snapshots/test_snapshot'],shell=True)
     main.set_value("GRUB_DEFAULT=",temp_entry,target_file=f"{HOME}/.grub-editor/snapshots/test_snapshot")
+    mw.setUiElements(only_snapshots=True)
     mw.comboBox_configurations.setCurrentIndex(mw.configurations.index("test_snapshot"))
 
     
@@ -138,20 +155,10 @@ def test_btn_set(qtbot):
     
     assert "(modified)" in mw.configurations[mw.comboBox_configurations.currentIndex()]
     qtbot.mouseClick(mw.btn_set, QtCore.Qt.LeftButton)
-    # while mw.lbl_status.text()!="Saved successfully":
-    #             sleep(1)
-    #             print(mw.lbl_status.text(),"lbl_status  waiting for it to change to Saved successfully")
     
-    print(mw.saveConfs_worker)
-    # while mw.saveConfs_worker==None:
-    #     sleep(1)
-    with qtbot.waitSignal(mw.saveConfs_worker.signals.finished,raising=True):
-        
+    with qtbot.waitSignal(mw.saveConfs_worker.signals.finished,raising=True,timeout=30*1000):
+        pass
     
-        assert mw.original_modifiers ==[]
-        print(mw.configurations[mw.comboBox_configurations.currentIndex()])
-        assert "(modified)" not in mw.configurations[mw.comboBox_configurations.currentIndex()]
-
-    #     qtbot.mouseClick(mw.btn_reset,QtCore.Qt.LeftButton)
-    # sleep(2)
-    print('yay')
+    assert mw.original_modifiers ==[]
+    print(mw.configurations[mw.comboBox_configurations.currentIndex()])
+    assert "(modified)" not in mw.configurations[mw.comboBox_configurations.currentIndex()]

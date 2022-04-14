@@ -286,3 +286,19 @@ def test_btn_view(qtbot):
     
     
     
+def test_btn_set(qtbot):
+    mw=main.Ui()
+    main.MainWindow=mw
+    #todo make a failing test as set button currently faulty
+    mw.tabWidget.setCurrentIndex(1)
+    
+    
+    if mw.VLayout_snapshot.count()==0:
+        qtbot.mouseClick(mw.btn_create_snapshot,QtCore.Qt.LeftButton)
+    
+    row=mw.VLayout_snapshot.itemAt(0).widget()
+    btn_set = row.itemAt(4).widget()
+    
+    assert main.file_loc==main.CONF_LOC
+    qtbot.mouseClick(btn_set,QtCore.Qt.LeftButton)
+    
