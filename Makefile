@@ -1,4 +1,4 @@
-
+PKG_DIR=
 DESKTOP_FILE=grub-editor.desktop
 INSTALL_PATH=$(PKG_DIR)/opt/grub-editor
 DESKTOP_PATH=$(PKG_DIR)/usr/share/applications
