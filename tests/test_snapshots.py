@@ -5,7 +5,7 @@ import subprocess
 from time import sleep
 from datetime import datetime as dt
 import re
-from tools import change_comboBox_current_index
+from tools import change_comboBox_current_index , windows
 PATH = os.path.dirname(os.path.realpath(__file__))
 #get the parent directory
 PATH = PATH[0:-5]
@@ -296,9 +296,27 @@ def test_btn_set(qtbot):
     if mw.VLayout_snapshot.count()==0:
         qtbot.mouseClick(mw.btn_create_snapshot,QtCore.Qt.LeftButton)
     
-    row=mw.VLayout_snapshot.itemAt(0).widget()
+    row=mw.VLayout_snapshot.itemAt(0).layout()
     btn_set = row.itemAt(4).widget()
-    
+    snapshot_name=row.itemAt(0).widget().text()
     assert main.file_loc==main.CONF_LOC
     qtbot.mouseClick(btn_set,QtCore.Qt.LeftButton)
     
+    assert mw.lbl_status.text() =="Waiting for authentication"
+    sleep(1)
+    win_list=windows()[0]
+    auth_win_vis=False
+    for i in range(len(win_list)):
+        print(win_list[i])
+        if "Authentication Required — PolicyKit1" in win_list[i]:
+            auth_win_vis=True
+            break
+    
+    assert auth_win_vis==True
+    
+    with qtbot.waitSignal(mw.set_snapshot_worker.signals.finished,timeout=30*1000):
+        pass
+
+    conf_sum = subprocess.check_output([f"sha256sum {main.CONF_LOC}"],shell=True).decode()
+    snapshot_sum = subprocess.check_output([f"sha256sum {HOME}/.grub-editor/snapshots/{snapshot_name}"],shell=True).decode()
+    assert conf_sum[:65]==snapshot_sum[:65]

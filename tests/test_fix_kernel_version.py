@@ -83,10 +83,10 @@ def test_fix_kernel_version(qtbot):
     assert issues ==[]
     assert new_default_val in mw.all_entries 
     assert new_default_val not in mw.invalid_entries
-        
     
     
     
-            
+    
+    
     
     
