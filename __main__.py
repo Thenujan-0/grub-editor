@@ -3,11 +3,12 @@ import sys
 import main
 import os
 import traceback
+import logging
+from math import floor
+
 HOME =os.getenv('HOME')
 
-
-
-import logging
+LOG_PATH=f'{HOME}/.grub-editor/logs/main.log'
 
 logging.root.handlers = []
 
@@ -15,12 +16,21 @@ logging.basicConfig(
     level=logging.ERROR,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler(f'{HOME}/.grub-editor/logs/main.log'),
+        logging.FileHandler(LOG_PATH),
         logging.StreamHandler()
     ]
 )
 
 
+size= os.path.getsize(LOG_PATH)
+if (size>5*10^6):
+    with open(LOG_PATH) as f:
+        data = f.read()
+        ind=floor(len(data)/2)
+        new_data =data[ind:]
+    with open(LOG_PATH,"w") as f:
+        f.write(new_data)
+        
 def except_hook(cls,exception,traceback_):
 	print('adasd asdasd')
 	# sys.__excepthook__(cls, exception, traceback)
