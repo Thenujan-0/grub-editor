@@ -435,7 +435,6 @@ class Ui(QtWidgets.QMainWindow):
         """ on toggle handlerfor checkBox_boot_default_entry_after """
         btn =self.sender()
         timeout=get_value('GRUB_TIMEOUT=',self.issues)
-        printer(timeout,'timeout')
         if  timeout !='None' and timeout !='-1':
             # printer(timeout)
             if self.checkBox_boot_default_entry_after.isChecked():
@@ -458,9 +457,10 @@ class Ui(QtWidgets.QMainWindow):
     def btn_reset_callback(self):
         """ on clicked callback for reset button """
 
-        print('current index of combox configuration is',self.comboBox_configurations.currentIndex())
 
         self.comboBox_configurations.setCurrentIndex(0)
+        
+        #todo check if this line is necessary
         self.comboBox_configurations.blockSignals(False)
 
 
@@ -560,6 +560,7 @@ class Ui(QtWidgets.QMainWindow):
 
                 if file_loc ==CONF_LOC:
                     initialize_temp_file(file_loc)
+                    set_value("GRUB_DEFAULT=",crct_value)
                     self.saveConfs()
                 else:
                     set_value('GRUB_DEFAULT=',crct_value,target_file=file_loc)
@@ -572,7 +573,7 @@ class Ui(QtWidgets.QMainWindow):
                 # print('set grub default to the correct one')
                 # self.show_saving()
                 
-                self.setUiElements()
+                # self.setUiElements()
                 dwin.close()
             if pref_fix=="None":
                 dwin = self.dialog_invalid_default_entry
@@ -613,31 +614,37 @@ class Ui(QtWidgets.QMainWindow):
         # print(unique_dialog_win,'unique_dialog_win')
         crct_value= None
         index = invalid_value.find('(Kernel: ')
-        for value in self.all_entries:
-            
-            #check if the part before the kernel is same
-            if invalid_value[:index]== value[:index]:
+        try:
+            for value in self.all_entries:
                 
-                pattern=r'\d.\d+'
-                krnl_major_vrsn=re.search(pattern,invalid_value).group(0)
-                krnl_major_vrsn2 = re.search(pattern,value).group(0)
-                # print(value ,krnl_major_vrsn2,krnl_major_vrsn)
-                if krnl_major_vrsn2 == krnl_major_vrsn:
+                #check if the part before the kernel is same
+                if invalid_value[:index]== value[:index]:
                     
-                    #if the invalid contains fallback then the non invalid should also contain initramfs
-                    #todo find out why this returns unexpected value
-                    # condition =   ('fallback initramfs)' in value ) ^ ('fallback intramfs)' in invalid_value )
-                    
-                    #to avoid some unexpected behavior by python
-                    first =('fallback initramfs)' in value )
-                    second = ('fallback initramfs)' in invalid_value )
-                    
-                    condition = not (first ^ second)
-                    
-                    if condition and (value != invalid_value):
-                        # print('the right one ',invalid_value,value)
-                        crct_value =value
-                        break
+                    pattern=r'\d.\d+'
+                    krnl_major_vrsn=re.search(pattern,invalid_value).group(0)
+                    krnl_major_vrsn2 = re.search(pattern,value).group(0)
+                    # print(value ,krnl_major_vrsn2,krnl_major_vrsn)
+                    if krnl_major_vrsn2 == krnl_major_vrsn:
+                        
+                        #if the invalid contains fallback then the non invalid should also contain initramfs
+                        #todo find out why this returns unexpected value
+                        # condition =   ('fallback initramfs)' in value ) ^ ('fallback intramfs)' in invalid_value )
+                        
+                        #to avoid some unexpected behavior by python
+                        first =('fallback initramfs)' in value )
+                        second = ('fallback initramfs)' in invalid_value )
+                        
+                        condition = not (first ^ second)
+                        
+                        if condition and (value != invalid_value):
+                            # print('the right one ',invalid_value,value)
+                            crct_value =value
+                            break
+                        
+        except AttributeError as e:
+            printer("invalid default entry is not fixable")
+            printer(traceback.format_exc())
+            
         if pref_show=="None":
             create_win(True)
             
@@ -920,6 +927,12 @@ class Ui(QtWidgets.QMainWindow):
                 authentication_complete=False
                 authentication_error=False
                 for line in process.stdout:
+                    try:
+                        self.vBar.setValue(self.vBar.maximum())
+                    except AttributeError:
+                        pass
+                        #because vBar is not initialized yet
+                    
                     if not authentication_complete:
                         self.lbl_status.setText('Saving configurations')
                         authentication_complete=True
@@ -1074,6 +1087,7 @@ class Ui(QtWidgets.QMainWindow):
         if btn.text()=='Show Details':
             
             self.scrollArea = QtWidgets.QScrollArea()
+            self.vBar=self.scrollArea.verticalScrollBar()
             self.scrollArea.setWidgetResizable(True)
             self.scrollArea.setObjectName("scrollArea")
             self.scrollAreaWidgetContents = QtWidgets.QWidget()
@@ -1137,7 +1151,7 @@ class Ui(QtWidgets.QMainWindow):
             
             
         else:
-            self.lbl_status.setText('saving do not close')
+            self.lbl_status.setText('Waiting for authentication')
             self.lbl_status.setStyleSheet('color:#03fc6f;')
             
             
@@ -1315,6 +1329,11 @@ class Ui(QtWidgets.QMainWindow):
                 # printer('running')
                 authentication_complete=False
                 for line in process.stdout:
+                    try :
+                        self.vBar.setValue(self.vBar.maximum())
+                    except AttributeError:
+                        pass
+                        #because vBar is not initialized yet
                     if not authentication_complete:
                         self.lbl_status.setText('Saving configurations')
                         authentication_complete=True
