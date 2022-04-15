@@ -27,10 +27,27 @@ from libs.worker import Worker
 from widgets.dialog import DialogUi
 from widgets.error_dialog import ErrorDialogUi
 from widgets.loading_bar import LoadingBar
+
 CONF_LOC='/etc/default/grub'
 file_loc=CONF_LOC
+HOME =os.getenv('HOME')
 
-
+if os.getenv("XDG_CONFIG_HOME") ==None:
+    CONFIG_LOC=HOME+"/.config/grub-editor"
+else:
+    CONFIG_LOC=os.getenv("XDG_CONFIG_HOME")
+    
+if os.getenv("XDG_CACHE_HOME") ==None:
+    CACHE_LOC=HOME+"/.cache"
+else:
+    CACHE_LOC=os.getenv("XDG_CACHE_HOME")
+    
+if os.getenv("XDG_DATA_HOME") ==None:
+    DATA_LOC=HOME+"/.local/share"
+else:
+    DATA_LOC=os.getenv("XDG_DATA_HOME")
+    
+    
 
 def printer(*args):
     """ writes to log and writes to console """
@@ -41,20 +58,20 @@ def printer(*args):
     
     if sys.platform == 'linux':
                                                              #number is in bytes
-        if os.stat(f'{HOME}/.grub-editor/logs/main.log').st_size > 5000000:
+        if os.stat(f'{DATA_LOC}/logs/main.log').st_size > 5000000:
             
             #only keep last half of the file
-            with open(f'{HOME}/.grub-editor/logs/main.log','r') as f:
+            with open(f'{DATA_LOC}/logs/main.log','r') as f:
                 data =f.read()
                 lendata = len(data)/2
                 lendata=math.floor(lendata)
             new_data = data[lendata:]+'\n'
             
-            with open(f'{HOME}/.grub-editor/logs/main.log','w') as f:
+            with open(f'{DATA_LOC}/logs/main.log','w') as f:
                 f.write(str(time_now)+new_data+'\n')
                 
                 
-        with open(f'{HOME}/.grub-editor/logs/main.log','a') as f:
+        with open(f'{DATA_LOC}/logs/main.log','a') as f:
             f.write(str(time_now)+printer_temp+'\n')
     print(printer_temp)
 
@@ -62,22 +79,21 @@ def printer(*args):
 write_file='/opt/grub_fake.txt'
 write_file=file_loc
 
-HOME =os.getenv('HOME')
 PATH = os.path.dirname(os.path.realpath(__file__))
 to_write_data=None
 
 #create the necessary files and folders
-subprocess.Popen([f'mkdir -p {HOME}/.grub-editor/snapshots'],shell=True)
-subprocess.Popen([f'mkdir -p {HOME}/.grub-editor/logs'],shell=True)
-subprocess.Popen([f'touch {HOME}/.grub-editor/logs/main.log'],shell=True)
+subprocess.Popen([f'mkdir -p {DATA_LOC}/snapshots'],shell=True)
+subprocess.Popen([f'mkdir -p {DATA_LOC}/logs'],shell=True)
+subprocess.Popen([f'touch {DATA_LOC}/logs/main.log'],shell=True)
 
 
 #catch the error that occures when this file isnt created yet
 try:
-    logging.basicConfig(filename=f'{HOME}/.grub-editor/logs/main.log',format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.basicConfig(filename=f'{DATA_LOC}/logs/main.log',format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 except FileNotFoundError:
-    subprocess.run([f'mkdir -p {HOME}/.grub-editor/logs'],shell=True)
-    subprocess.run([f'touch {HOME}/.grub-editor/logs/main.log'],shell=True)
+    subprocess.run([f'mkdir -p {DATA_LOC}/logs'],shell=True)
+    subprocess.run([f'touch {DATA_LOC}/logs/main.log'],shell=True)
 
 def check_dual_boot():
     out = subprocess.check_output(['pkexec os-prober'],shell=True).decode()
@@ -137,7 +153,7 @@ def get_value(name,issues,read_file=None):
 
 
 
-def set_value(name,val,target_file=f'{HOME}/.cache/grub-editor/temp.txt'):
+def set_value(name,val,target_file=f'{CACHE_LOC}/grub-editor/temp.txt'):
     """ writes the changes to ~/.cache/grub-editor/temp.txt. call initialize_temp_file before start writing to temp.txt
     call self.saveConfs or cp the file from cache to original to finalize the changes
     
@@ -179,14 +195,14 @@ def set_value(name,val,target_file=f'{HOME}/.cache/grub-editor/temp.txt'):
         
     to_write_data = final_string
     
-    subprocess.Popen([f'mkdir -p {HOME}/.cache/grub-editor/'],shell=True)
-    subprocess.Popen([f'touch {HOME}/.cache/grub-editor/temp.txt'],shell=True)
+    subprocess.Popen([f'mkdir -p {CACHE_LOC}/grub-editor/'],shell=True)
+    subprocess.Popen([f'touch {CACHE_LOC}/grub-editor/temp.txt'],shell=True)
     with open(target_file,'w') as file:
         file.write(to_write_data)
         
 def initialize_temp_file(file_path="/etc/default/grub"):
     """copies the file to ~/.cache/grub-editor/temp.txt so that set_value can start writing changes to it"""
-    subprocess.run([f'cp \'{file_path}\' {HOME}/.cache/grub-editor/temp.txt'],shell=True)
+    subprocess.run([f'cp \'{file_path}\' {CACHE_LOC}/grub-editor/temp.txt'],shell=True)
       
 
 
@@ -198,7 +214,7 @@ preferences={"view_default":["on_the_application_itself","default_text_editor","
              }
 
 def init_pref_file():
-    with open(f'{HOME}/.grub-editor/preferences/main.json','w') as file :
+    with open(f'{CONFIG_LOC}/main.json','w') as file :
         file.write("")
         
 def get_preference(key):
@@ -208,13 +224,13 @@ def get_preference(key):
     if key not in preferences.keys():
         raise Exception("Key passed to the get_preference is not valid")
     
-    subprocess.run([f'mkdir -p {HOME}/.grub-editor/preferences/'],shell=True)
+    subprocess.run([f'mkdir -p {CONFIG_LOC}/'],shell=True)
     
-    if not os.path.exists(f'{HOME}/.grub-editor/preferences/main.json'):
+    if not os.path.exists(f'{CONFIG_LOC}/main.json'):
         # print("initializing preference file")
         init_pref_file()
         
-    with  open(f'{HOME}/.grub-editor/preferences/main.json') as file:
+    with  open(f'{CONFIG_LOC}/main.json') as file:
         try:
             data=file.read()
             # print(data,"data of the json file")
@@ -229,7 +245,7 @@ def get_preference(key):
                 
             
     #reopen the file and then read it
-    with  open(f'{HOME}/.grub-editor/preferences/main.json') as file:
+    with  open(f'{CONFIG_LOC}/main.json') as file:
         data=file.read()
         # print(data)
         if data!="":
@@ -265,10 +281,10 @@ def set_preference(key,value):
     if not valid_key:
         raise Exception("Key passed to the get_preference is not valid")
     
-    subprocess.run([f'mkdir -p {HOME}/.grub-editor/preferences/'],shell=True)
+    subprocess.run([f'mkdir -p {CONFIG_LOC}/'],shell=True)
     
-    if os.path.exists(f'{HOME}/.grub-editor/preferences/main.json'):
-        with open(f'{HOME}/.grub-editor/preferences/main.json') as file:
+    if os.path.exists(f'{CONFIG_LOC}/main.json'):
+        with open(f'{CONFIG_LOC}/main.json') as file:
             try:
                 pref_dict =json.load(file)
                 pref_dict[key]=value
@@ -278,7 +294,7 @@ def set_preference(key,value):
         
         
     
-    with open(f'{HOME}/.grub-editor/preferences/main.json', "w") as pref_file:
+    with open(f'{CONFIG_LOC}/main.json', "w") as pref_file:
     
         json.dump(pref_dict, pref_file, indent = 4)
     
@@ -492,7 +508,7 @@ class Ui(QtWidgets.QMainWindow):
         if value ==CONF_LOC:
             file_loc=CONF_LOC
         else:
-            file_loc=f'{HOME}/.grub-editor/snapshots/{value}'
+            file_loc=f'{DATA_LOC}/snapshots/{value}'
         
         self.setUiElements(show_issues=True)
             
@@ -585,8 +601,8 @@ class Ui(QtWidgets.QMainWindow):
                     file_name = CONF_LOC
                     dwin.label.setText(f'{file_name} currently has an invalid default entry. It is because of a kernel update . Do you want Grub editor to fix it for you?')
                     
-                elif f'{HOME}/.grub-editor/snapshots/' in  file_loc:
-                    file_name=file_loc.replace(f'{HOME}/.grub-editor/snapshots/','')
+                elif f'{DATA_LOC}/snapshots/' in  file_loc:
+                    file_name=file_loc.replace(f'{DATA_LOC}/snapshots/','')
                     dwin.label.setText(f'snapshot you selected ({file_name}) currently has an invalid default entry. It is because of a kernel update . Do you want Grub editor to fix it for you?')
                     
                 else:
@@ -762,7 +778,7 @@ class Ui(QtWidgets.QMainWindow):
         self.configurations=[CONF_LOC]
         
         #add the available configurations to the combo box
-        contents = subprocess.check_output([f'ls {HOME}/.grub-editor/snapshots/'],shell=True).decode()
+        contents = subprocess.check_output([f'ls {DATA_LOC}/snapshots/'],shell=True).decode()
         self.lines =contents.splitlines()
         # printer(self.lines,'line')
         
@@ -845,16 +861,16 @@ class Ui(QtWidgets.QMainWindow):
         self.lbl_details_text=''
         
         # clear the file in cache
-        subprocess.run([f'rm {HOME}/.cache/grub-editor/temp.txt'],shell=True)
-        subprocess.run([f'mkdir -p {HOME}/.cache/grub-editor'],shell=True)
-        subprocess.run([f'touch {HOME}/.cache/grub-editor/temp.txt'],shell=True)
+        subprocess.run([f'rm {CACHE_LOC}/grub-editor/temp.txt'],shell=True)
+        subprocess.run([f'mkdir -p {CACHE_LOC}/grub-editor'],shell=True)
+        subprocess.run([f'touch {CACHE_LOC}/grub-editor/temp.txt'],shell=True)
 
         index =self.comboBox_configurations.currentIndex()
         total=len(self.configurations)
         if index ==0 or (index==total-1 and "(modified)" in self.configurations[-1]):
             target_file_copy = CONF_LOC
         else:
-            target_file_copy =f'{HOME}/.grub-editor/snapshots/'+self.configurations[index]
+            target_file_copy =f'{DATA_LOC}/snapshots/'+self.configurations[index]
 
         initialize_temp_file(target_file_copy)
         
@@ -907,7 +923,7 @@ class Ui(QtWidgets.QMainWindow):
     def set_conf_and_update_lbl_details(self):
         try:
             process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && \
-                    cp -f  "{HOME}/.cache/grub-editor/temp.txt"  '+CONF_LOC +' && sudo update-grub 2>&1 \'  '],
+                    cp -f  "{CACHE_LOC}/grub-editor/temp.txt"  '+CONF_LOC +' && sudo update-grub 2>&1 \'  '],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 shell=True)
@@ -1056,12 +1072,12 @@ class Ui(QtWidgets.QMainWindow):
             data= file.read()
         date_time =str(dt.now()).replace(' ','_')[:-7]
         if not from_cache:
-            subprocess.Popen([f'touch {HOME}/.grub-editor/snapshots/{date_time}'],shell=True)
-            with open(f'{HOME}/.grub-editor/snapshots/{date_time}','w') as file:
+            subprocess.Popen([f'touch {DATA_LOC}/snapshots/{date_time}'],shell=True)
+            with open(f'{DATA_LOC}/snapshots/{date_time}','w') as file:
                 file.write(data)
         else:
             # printer('created a snapshot grom cache')
-            subprocess.run([f'cp {HOME}/.cache/grub-editor/temp.txt {HOME}/.grub-editor/snapshots/{date_time}'],shell=True)
+            subprocess.run([f'cp {CACHE_LOC}/grub-editor/temp.txt {DATA_LOC}/snapshots/{date_time}'],shell=True)
         self.setUiElements(only_snapshots=True)
         self.handle_modify()
         # print('setUi elems was called')
@@ -1201,7 +1217,7 @@ class Ui(QtWidgets.QMainWindow):
     
     def btn_view_callback(self,snapshot_name):
         try:
-            new_loc= f'{HOME}/.grub-editor/snapshots/'+snapshot_name
+            new_loc= f'{DATA_LOC}/snapshots/'+snapshot_name
             view_default=get_preference('view_default')
             self.view_btn_win =ViewButtonUi(new_loc)
             
@@ -1264,7 +1280,7 @@ class Ui(QtWidgets.QMainWindow):
 
 
             #check if snapshot's default os is a valid one 
-            default=get_value("GRUB_DEFAULT=",self.issues,f"{HOME}/.grub-editor/snapshots/{line}")
+            default=get_value("GRUB_DEFAULT=",self.issues,f"{DATA_LOC}/snapshots/{line}")
 
             if default not in self.all_entries:
                 # printer("Value of default in snapshot is not a valid os")
@@ -1281,7 +1297,7 @@ class Ui(QtWidgets.QMainWindow):
                 
 
 
-            # printer(f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
+            # printer(f'pkexec sh -c  \' cp -f  "{DATA_LOC}/snapshots/{line}" {write_file} && sudo update-grub  \' ')
 
             
         except Exception as e:
@@ -1311,8 +1327,8 @@ class Ui(QtWidgets.QMainWindow):
     def update_lbl_status(self,line):
         try:
             # print('executing the command')
-            # print(f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file} && sudo update-grub  \' ')
-            process = subprocess.Popen([f'pkexec sh -c  \' cp -f  "{HOME}/.grub-editor/snapshots/{line}" {write_file} && sudo update-grub  \' '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
+            # print(f'pkexec sh -c  \' cp -f  "{DATA_LOC}/snapshots/{line}" {write_file} && sudo update-grub  \' ')
+            process = subprocess.Popen([f'pkexec sh -c  \' cp -f  "{DATA_LOC}/snapshots/{line}" {write_file} && sudo update-grub  \' '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
             self.lbl_details_text='Waiting for authentication \n'
             
             self.set_lbl_details()
@@ -1375,11 +1391,11 @@ class Ui(QtWidgets.QMainWindow):
             
     def btn_delete_callback_creator(self,arg):
         def func():
-            string =f'rm {HOME}/.grub-editor/snapshots/{arg}'
+            string =f'rm {DATA_LOC}/snapshots/{arg}'
             # printer(string)
-            subprocess.Popen([f'rm \'{HOME}/.grub-editor/snapshots/{arg}\''],shell=True)
+            subprocess.Popen([f'rm \'{DATA_LOC}/snapshots/{arg}\''],shell=True)
             global file_loc
-            if file_loc == f'{HOME}/.grub-editor/snapshots/{arg}':
+            if file_loc == f'{DATA_LOC}/snapshots/{arg}':
                 file_loc=CONF_LOC
                 if self.verticalLayout.itemAt(3):
                     self.verticalLayout.itemAt(3).widget().deleteLater()
@@ -1410,7 +1426,7 @@ class Ui(QtWidgets.QMainWindow):
                 self.ledit_ = self.rename_line_edits[number]
                 text = self.ledit_.text()
                 line=self.lines[number]
-                subprocess.Popen([f'mv \'{HOME}/.grub-editor/snapshots/{line}\' \'{HOME}/.grub-editor/snapshots/{text}\' '],shell=True)
+                subprocess.Popen([f'mv \'{DATA_LOC}/snapshots/{line}\' \'{DATA_LOC}/snapshots/{text}\' '],shell=True)
                 self.lbl_1 =QtWidgets.QLabel(self.conf_snapshots)
                 self.lbl_1.setObjectName(f"label{number}")
                 self.lbl_1.setText(self.lines[number])
@@ -1549,7 +1565,7 @@ class Ui(QtWidgets.QMainWindow):
         
     def createSnapshotList(self):
         try:
-            contents = subprocess.check_output([f'ls {HOME}/.grub-editor/snapshots/'],shell=True).decode()
+            contents = subprocess.check_output([f'ls {DATA_LOC}/snapshots/'],shell=True).decode()
             self.lines =contents.splitlines()
 
             self.HLayouts_list=[]

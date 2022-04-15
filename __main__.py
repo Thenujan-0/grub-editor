@@ -7,8 +7,12 @@ import logging
 from math import floor
 
 HOME =os.getenv('HOME')
-
-LOG_PATH=f'{HOME}/.grub-editor/logs/main.log'
+if os.getenv("XDG_DATA_HOME") ==None:
+    DATA_LOC=HOME+"/.local/share"
+else:
+    DATA_LOC=os.getenv("XDG_DATA_HOME")
+    
+LOG_PATH=f'{DATA_LOC}/logs/main.log'
 
 logging.root.handlers = []
 
