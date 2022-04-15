@@ -8,9 +8,9 @@ from math import floor
 
 HOME =os.getenv('HOME')
 if os.getenv("XDG_DATA_HOME") ==None:
-    DATA_LOC=HOME+"/.local/share"
+    DATA_LOC=HOME+"/.local/share/grub-editor"
 else:
-    DATA_LOC=os.getenv("XDG_DATA_HOME")
+    DATA_LOC=os.getenv("XDG_DATA_HOME")+"/grub-editor"
     
 LOG_PATH=f'{DATA_LOC}/logs/main.log'
 

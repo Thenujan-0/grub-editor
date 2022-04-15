@@ -34,17 +34,17 @@ HOME =os.getenv('HOME')
 if os.getenv("XDG_CONFIG_HOME") ==None:
     CONFIG_LOC=HOME+"/.config/grub-editor"
 else:
-    CONFIG_LOC=os.getenv("XDG_CONFIG_HOME")
+    CONFIG_LOC=os.getenv("XDG_CONFIG_HOME")+"/grub-editor"
     
 if os.getenv("XDG_CACHE_HOME") ==None:
-    CACHE_LOC=HOME+"/.cache"
+    CACHE_LOC=HOME+"/.cache/grub-editor"
 else:
-    CACHE_LOC=os.getenv("XDG_CACHE_HOME")
+    CACHE_LOC=os.getenv("XDG_CACHE_HOME")+"/grub-editor"
     
 if os.getenv("XDG_DATA_HOME") ==None:
-    DATA_LOC=HOME+"/.local/share"
+    DATA_LOC=HOME+"/.local/share/grub-editor"
 else:
-    DATA_LOC=os.getenv("XDG_DATA_HOME")
+    DATA_LOC=os.getenv("XDG_DATA_HOME")+"/grub-editor"
     
     
 
@@ -152,7 +152,7 @@ def get_value(name,issues,read_file=None):
 
 
 
-def set_value(name,val,target_file=f'{CACHE_LOC}/grub-editor/temp.txt'):
+def set_value(name,val,target_file=f'{CACHE_LOC}/temp.txt'):
     """ writes the changes to ~/.cache/grub-editor/temp.txt. call initialize_temp_file before start writing to temp.txt
     call self.saveConfs or cp the file from cache to original to finalize the changes
     
@@ -194,14 +194,14 @@ def set_value(name,val,target_file=f'{CACHE_LOC}/grub-editor/temp.txt'):
         
     to_write_data = final_string
     
-    subprocess.Popen([f'mkdir -p {CACHE_LOC}/grub-editor/'],shell=True)
-    subprocess.Popen([f'touch {CACHE_LOC}/grub-editor/temp.txt'],shell=True)
+    subprocess.Popen([f'mkdir -p {CACHE_LOC}/'],shell=True)
+    subprocess.Popen([f'touch {CACHE_LOC}/temp.txt'],shell=True)
     with open(target_file,'w') as file:
         file.write(to_write_data)
         
 def initialize_temp_file(file_path="/etc/default/grub"):
     """copies the file to ~/.cache/grub-editor/temp.txt so that set_value can start writing changes to it"""
-    subprocess.run([f'cp \'{file_path}\' {CACHE_LOC}/grub-editor/temp.txt'],shell=True)
+    subprocess.run([f'cp \'{file_path}\' {CACHE_LOC}/temp.txt'],shell=True)
       
 
 
@@ -860,9 +860,9 @@ class Ui(QtWidgets.QMainWindow):
         self.lbl_details_text=''
         
         # clear the file in cache
-        subprocess.run([f'rm {CACHE_LOC}/grub-editor/temp.txt'],shell=True)
-        subprocess.run([f'mkdir -p {CACHE_LOC}/grub-editor'],shell=True)
-        subprocess.run([f'touch {CACHE_LOC}/grub-editor/temp.txt'],shell=True)
+        subprocess.run([f'rm {CACHE_LOC}/temp.txt'],shell=True)
+        subprocess.run([f'mkdir -p {CACHE_LOC}'],shell=True)
+        subprocess.run([f'touch {CACHE_LOC}/temp.txt'],shell=True)
 
         index =self.comboBox_configurations.currentIndex()
         total=len(self.configurations)
@@ -923,13 +923,13 @@ class Ui(QtWidgets.QMainWindow):
         try:
             if "update-grub" in os.listdir( "/usr/bin/"):
                 process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && \
-                        cp -f  "{CACHE_LOC}/grub-editor/temp.txt"  '+CONF_LOC +' && sudo update-grub 2>&1 \'  '],
+                        cp -f  "{CACHE_LOC}/temp.txt"  '+CONF_LOC +' && sudo update-grub 2>&1 \'  '],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     shell=True)
             else:
                 process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && \
-                        cp -f  "{CACHE_LOC}/grub-editor/temp.txt"  '+CONF_LOC +' && grub-mkconfig -o /boot/grub/grub.cfg 2>&1 \'  '],
+                        cp -f  "{CACHE_LOC}/temp.txt"  '+CONF_LOC +' && grub-mkconfig -o /boot/grub/grub.cfg 2>&1 \'  '],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     shell=True)
@@ -1084,7 +1084,7 @@ class Ui(QtWidgets.QMainWindow):
                 file.write(data)
         else:
             # printer('created a snapshot grom cache')
-            subprocess.run([f'cp {CACHE_LOC}/grub-editor/temp.txt {DATA_LOC}/snapshots/{date_time}'],shell=True)
+            subprocess.run([f'cp {CACHE_LOC}/temp.txt {DATA_LOC}/snapshots/{date_time}'],shell=True)
         self.setUiElements(only_snapshots=True)
         self.handle_modify()
         # print('setUi elems was called')
