@@ -18,8 +18,7 @@ from time import perf_counter
 import traceback
 import json
 import random
-import math
-import zmq
+import math 
 import logging
 from threading import Thread
 from libs.qt_functools import insert_into, reconnect
