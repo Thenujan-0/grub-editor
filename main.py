@@ -922,11 +922,19 @@ class Ui(QtWidgets.QMainWindow):
             
     def set_conf_and_update_lbl_details(self):
         try:
-            process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && \
-                    cp -f  "{CACHE_LOC}/grub-editor/temp.txt"  '+CONF_LOC +' && sudo update-grub 2>&1 \'  '],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                shell=True)
+            if "update-grub" in os.listdir( "/usr/bin/"):
+                process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && \
+                        cp -f  "{CACHE_LOC}/grub-editor/temp.txt"  '+CONF_LOC +' && sudo update-grub 2>&1 \'  '],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    shell=True)
+            else:
+                process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && \
+                        cp -f  "{CACHE_LOC}/grub-editor/temp.txt"  '+CONF_LOC +' && grub-mkconfig -o /boot/grub/grub.cfg 2>&1 \'  '],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    shell=True)
+                
             self.lbl_details_text='Waiting for authentication \n'
             
             self.set_lbl_details()
@@ -1328,7 +1336,10 @@ class Ui(QtWidgets.QMainWindow):
         try:
             # print('executing the command')
             # print(f'pkexec sh -c  \' cp -f  "{DATA_LOC}/snapshots/{line}" {write_file} && sudo update-grub  \' ')
-            process = subprocess.Popen([f'pkexec sh -c  \' cp -f  "{DATA_LOC}/snapshots/{line}" {write_file} && sudo update-grub  \' '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
+            if "update-grub" in os.listdir( "/usr/bin/"):
+                process = subprocess.Popen([f'pkexec sh -c  \' cp -f  "{DATA_LOC}/snapshots/{line}" {write_file} && update-grub  \' '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
+            else:
+                process = subprocess.Popen([f'pkexec sh -c  \' cp -f  "{DATA_LOC}/snapshots/{line}" {write_file} && grub-mkconfig -o /boot/grub/grub.cfg  \' '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
             self.lbl_details_text='Waiting for authentication \n'
             
             self.set_lbl_details()
