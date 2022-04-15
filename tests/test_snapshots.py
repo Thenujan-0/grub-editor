@@ -135,7 +135,7 @@ def test_btn_create_snapshot(qtbot):
     #   configuration i want to save to snapshot (from the file or edited one)
     mw.tabWidget.setCurrentIndex(0)
     
-    change_comboBox_current_index(mw)
+    grub_default_ind=change_comboBox_current_index(mw)
     assert '(modified)' in mw.configurations[mw.comboBox_configurations.currentIndex()]
     
     mw.tabWidget.setCurrentIndex(1)
@@ -152,7 +152,6 @@ def test_btn_create_snapshot(qtbot):
         
     assert mw.create_snapshot_dialog.isVisible()
     
-    grub_default_ind = change_comboBox_current_index(mw)
     _test_ignore_changes(qtbot,mw,grub_default_ind)
     
     
