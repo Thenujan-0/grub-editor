@@ -27,8 +27,8 @@ from widgets.dialog import DialogUi
 from widgets.error_dialog import ErrorDialogUi
 from widgets.loading_bar import LoadingBar
 
-CONF_LOC='/etc/default/grub'
-file_loc=CONF_LOC
+GRUB_CONF_LOC='/etc/default/grub'
+file_loc=GRUB_CONF_LOC
 HOME =os.getenv('HOME')
 
 if os.getenv("XDG_CONFIG_HOME") ==None:
@@ -118,35 +118,42 @@ def get_value(name,issues,read_file=None):
 
     with open(read_file) as file:
         data =file.read()
-        start_index =data.find(name)
-        end_index =data[start_index+len(name):].find('\n')+start_index+len(name)
         lines=data.splitlines()
-        for line in lines:
-            if name in line and "#" in line:
-                string=name+f' is commented out in {read_file}'
-                if string not in issues:
-                    issues.append(string)
-                return 'None'
-        if start_index <0:
-            string='coudn\'t find '+name+f' in {read_file}'
-            if string not in issues:
-                issues.append(string)
-            return "None"
-        else:
-            if end_index <0:
-                data =  data[start_index+len(name):]
-            else:
-                data = data[start_index+len(name):end_index]
+        
+        # found the name that is being looked for in  a commented line
+        found_commented=False
+        
+        val= None
+        for ind ,line in enumerate(lines):
+            sline=line.strip()
+            if  sline.find(f"#{name}")==0:
+                found_commented=True
+                comment_issue_string =f"{name} is commented out in {read_file}"
+                
+            if sline.find("#")==0:
+                continue
+            elif sline.find(name)==0:
+                start_index= line.find(name)+len(name)
+                val=line[start_index:]
 
-            #remove the double quotes in the end and the begining
-            if name=="GRUB_DEFAULT=":
-                if data[-1]=='"':
-                    data=data[:-1]
-                if data[0]=='"':
-                    data=data[1:]
-                if data.find(">")>0:
-                    data =data.replace(">"," >")
-            return data
+        #remove the double quotes in the end and the begining
+        if name=="GRUB_DEFAULT=" and val!=None:
+            if val[-1]=='"':
+                val=val[:-1]
+            if val[0]=='"':
+                val=val[1:]
+            if val.find(">")>0:
+                val =val.replace(">"," >")
+                
+        elif name=="GRUB_DISABLE_OS_PROBER=" and val==None:
+            val="true"
+            
+        if val==None:
+            if found_commented and comment_issue_string not in issues:
+                issues.append(comment_issue_string)
+            else:
+                issues.append(f"{name} was not found in {read_file}")
+        return val
 
 
 
@@ -170,32 +177,38 @@ def set_value(name,val,target_file=f'{CACHE_LOC}/temp.txt'):
         if " >" in val:
             val= val.replace(" >",">")
     
-    with open(target_file,'r') as file:
-        to_write_data =file.read()
+    # found the name that is being looked for in  a commented line
+    found_commented=False
     
-    #find the starting index of the string that we are looking for    
-    start_index =to_write_data.find(name)
-    
-    #find the end index of the string we are looking for
-    end_index =to_write_data[start_index+len(name):].find('\n')+start_index+len(name)
-    
-    to_write_data = to_write_data.replace(name+to_write_data[start_index+len(name):end_index],name+str(val))
-    lines = to_write_data.splitlines()
-    for line in lines:
-        if name in line and '#' in line:
-            index = lines.index(line)
-            new_line =line.replace('#','')
-            lines[index] = new_line
-    final_string=''
-    for line in lines:
-        final_string = final_string+line+'\n'
+    with open(target_file) as f:
+        data=f.read()
         
-    # printer(final_string)
+    lines=data.splitlines()
+    old_val=None
+    for ind ,line in enumerate(lines):
+        sline=line.strip()
+        if sline.find("#")==0:
+            continue
         
-    to_write_data = final_string
+        
+        elif sline.find(name)==0:
+            start_index= line.find(name)+len(name)
+            old_val=line[start_index:]
+            if old_val!="":
+                new_line =line.replace(old_val,val)
+                lines[ind]=new_line
+            else:
+                print("empty string")
+                lines[ind]=name+val
+
+    to_write_data=""
     
-    subprocess.Popen([f'mkdir -p {CACHE_LOC}/'],shell=True)
-    subprocess.Popen([f'touch {CACHE_LOC}/temp.txt'],shell=True)
+    for line in lines:
+        to_write_data+=line+"\n"
+    
+    if old_val==None:
+        to_write_data+=name+val
+        
     with open(target_file,'w') as file:
         file.write(to_write_data)
         
@@ -253,11 +266,12 @@ def get_preference(key):
                 value = pref_dict[key]
             except KeyError:
                 set_preference(key,"None")
-                value="None"
+                value=None
         else:
             set_preference(key,"None")
-            value="None"
-
+            value=None
+        if value=="None":
+            value=None
         
     return value
 
@@ -450,7 +464,7 @@ class Ui(QtWidgets.QMainWindow):
         """ on toggle handlerfor checkBox_boot_default_entry_after """
         btn =self.sender()
         timeout=get_value('GRUB_TIMEOUT=',self.issues)
-        if  timeout !='None' and timeout !='-1':
+        if  timeout !=None and timeout !='-1':
             # printer(timeout)
             if self.checkBox_boot_default_entry_after.isChecked():
                 if btn  in self.original_modifiers:
@@ -459,7 +473,7 @@ class Ui(QtWidgets.QMainWindow):
                 if btn not in self.original_modifiers:
                     self.original_modifiers.append(btn)
 
-        elif (timeout == 'None' or timeout =='-1' ) :
+        elif (timeout == None or timeout =='-1' ) :
             if self.checkBox_boot_default_entry_after.isChecked():
                 if btn  not in self.original_modifiers:
                     self.original_modifiers.append(btn)
@@ -504,8 +518,8 @@ class Ui(QtWidgets.QMainWindow):
         global file_loc
         # printer(self.configurations[value],'load configuration from callback')
         value =self.configurations[value]
-        if value ==CONF_LOC:
-            file_loc=CONF_LOC
+        if value ==GRUB_CONF_LOC:
+            file_loc=GRUB_CONF_LOC
         else:
             file_loc=f'{DATA_LOC}/snapshots/{value}'
         
@@ -573,7 +587,7 @@ class Ui(QtWidgets.QMainWindow):
                 print('editing the file from',file_loc,'to fix kernel version')
                 # print(value,'value--------------------------')
 
-                if file_loc ==CONF_LOC:
+                if file_loc ==GRUB_CONF_LOC:
                     initialize_temp_file(file_loc)
                     set_value("GRUB_DEFAULT=",crct_value)
                     self.saveConfs()
@@ -590,14 +604,14 @@ class Ui(QtWidgets.QMainWindow):
                 
                 # self.setUiElements()
                 dwin.close()
-            if pref_fix=="None":
+            if pref_fix==None:
                 dwin = self.dialog_invalid_default_entry
                 dwin.btn_ok.setText('Fix')
                 dwin.checkBox.setText("Do this everytime")
                 dwin.resize(500,180)
                 
-                if file_loc ==CONF_LOC:
-                    file_name = CONF_LOC
+                if file_loc ==GRUB_CONF_LOC:
+                    file_name = GRUB_CONF_LOC
                     dwin.label.setText(f'{file_name} currently has an invalid default entry. It is because of a kernel update . Do you want Grub editor to fix it for you?')
                     
                 elif f'{DATA_LOC}/snapshots/' in  file_loc:
@@ -607,7 +621,10 @@ class Ui(QtWidgets.QMainWindow):
                 else:
                     printer("Error unknown condition when checking file_loc")
                     printer(file_loc)
-                
+                    self.error_dialog=ErrorDialogUi()
+                    self.error_dialog.set_error_title("Error unknown condition when checking file_loc")
+                    self.error_dialog.set_error_body("file_loc : "+file_loc)
+                    self.error_dialog.show()
                 
                 
                     
@@ -660,7 +677,7 @@ class Ui(QtWidgets.QMainWindow):
             printer("invalid default entry is not fixable")
             printer(traceback.format_exc())
             
-        if pref_show=="None":
+        if pref_show==None:
             create_win(True)
             
         if crct_value != None:
@@ -707,7 +724,7 @@ class Ui(QtWidgets.QMainWindow):
         if grub_default_val=='saved':
             self.previously_booted_entry.setChecked(True)
             # self.comboBox_grub_default.setCurrentIndex(0)
-        elif grub_default_val=='None':
+        elif grub_default_val==None:
             self.previously_booted_entry.setChecked(False)
             self.predefined.setChecked(False)
         else:
@@ -765,7 +782,7 @@ class Ui(QtWidgets.QMainWindow):
             finally:
 
                 timeout=get_value('GRUB_TIMEOUT=',self.issues)
-                if  timeout !='None' and timeout!='-1':
+                if  timeout !=None and timeout!='-1':
                     # printer(timeout)
                     self.ledit_grub_timeout.setText(timeout)
                 else:
@@ -774,7 +791,7 @@ class Ui(QtWidgets.QMainWindow):
 
 
         #stores the available configuration files
-        self.configurations=[CONF_LOC]
+        self.configurations=[GRUB_CONF_LOC]
         
         #add the available configurations to the combo box
         contents = subprocess.check_output([f'ls {DATA_LOC}/snapshots/'],shell=True).decode()
@@ -796,7 +813,7 @@ class Ui(QtWidgets.QMainWindow):
         
         global file_loc
         # printer('file_loc is now',file_loc)
-        if file_loc==CONF_LOC:
+        if file_loc==GRUB_CONF_LOC:
             self.comboBox_configurations.setCurrentIndex(0)
         elif '/snapshots/' in file_loc:
             index = file_loc.index('/snapshots/')
@@ -820,7 +837,7 @@ class Ui(QtWidgets.QMainWindow):
 
             
                 
-            if get_value('GRUB_TIMEOUT=',self.issues)=='-1' or get_value('GRUB_TIMEOUT=',self.issues)=='None':
+            if get_value('GRUB_TIMEOUT=',self.issues)=='-1' or get_value('GRUB_TIMEOUT=',self.issues)==None:
                 self.checkBox_boot_default_entry_after.setChecked(False)
             else:
                 self.checkBox_boot_default_entry_after.setChecked(True)
@@ -832,7 +849,8 @@ class Ui(QtWidgets.QMainWindow):
 
         if not only_snapshots:
             #set the value of checkBox_look_for_other_os
-            value = get_value('GRUB_DISABLE_OS_PROBER=',self.issues)
+            #passing an empty string it isnt as issue if GRUB_DISABLE_OS_PROBER is commented or not found
+            value = get_value('GRUB_DISABLE_OS_PROBER=',[])
             if value=="false":
                 self.checkBox_look_for_other_os.setChecked(True)
             elif value=="true":
@@ -840,6 +858,11 @@ class Ui(QtWidgets.QMainWindow):
             else:
                 # raise Exception("Unknown value for GRUB_DISABLE_OS_PROBER",value)
                 printer(f"Unknown value for GRUB_DISABLE_OS_PROBER {value} in {file_loc}")
+                self.error_dialog=ErrorDialogUi()
+                self.error_dialog.set_error_body(f"function SetUiElements: Unknown value for GRUB_DISABLE_OS_PROBER {value} in {file_loc}")
+                self.error_dialog.resize(800,300)
+                self.error_dialog.show()
+                
         if not only_snapshots:
             self.original_modifiers=[]
         self.handle_modify()
@@ -867,7 +890,7 @@ class Ui(QtWidgets.QMainWindow):
         index =self.comboBox_configurations.currentIndex()
         total=len(self.configurations)
         if index ==0 or (index==total-1 and "(modified)" in self.configurations[-1]):
-            target_file_copy = CONF_LOC
+            target_file_copy = GRUB_CONF_LOC
         else:
             target_file_copy =f'{DATA_LOC}/snapshots/'+self.configurations[index]
 
@@ -923,13 +946,13 @@ class Ui(QtWidgets.QMainWindow):
         try:
             if "update-grub" in os.listdir( "/usr/bin/"):
                 process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && \
-                        cp -f  "{CACHE_LOC}/temp.txt"  '+CONF_LOC +' && sudo update-grub 2>&1 \'  '],
+                        cp -f  "{CACHE_LOC}/temp.txt"  '+GRUB_CONF_LOC +' && sudo update-grub 2>&1 \'  '],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     shell=True)
             else:
                 process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && \
-                        cp -f  "{CACHE_LOC}/temp.txt"  '+CONF_LOC +' && grub-mkconfig -o /boot/grub/grub.cfg 2>&1 \'  '],
+                        cp -f  "{CACHE_LOC}/temp.txt"  '+GRUB_CONF_LOC +' && grub-mkconfig -o /boot/grub/grub.cfg 2>&1 \'  '],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     shell=True)
@@ -1034,7 +1057,7 @@ class Ui(QtWidgets.QMainWindow):
     def btn_create_snapshot_callback(self):
         preference= get_preference("create_snapshot")
         # printer(preference)
-        if preference=="None" and len(self.original_modifiers)>0:
+        if preference==None and len(self.original_modifiers)>0:
             self.create_snapshot_dialog = CreateSnapshotUi()
             self.create_snapshot_dialog.btn_ignore_changes.clicked.connect(self.btn_ignore_changes_callback)
             self.create_snapshot_dialog.btn_add_changes_to_snapshot.clicked.connect(self.btn_add_changes_to_snapshot_callback)
@@ -1043,7 +1066,7 @@ class Ui(QtWidgets.QMainWindow):
             self.saveConfsToCache()
             # printer('saving from cache')
             self.createSnapshot(from_cache=True)
-        elif preference=='ignore_changes' or preference =='None':
+        elif preference=='ignore_changes' or preference ==None:
             #preference is == None here means that nothing was modified in UI and preference file is fresh
             self.createSnapshot()
 
@@ -1216,7 +1239,7 @@ class Ui(QtWidgets.QMainWindow):
 
     # def btn_show_orginal_callback(self):
     #     global file_loc
-    #     file_loc=CONF_LOC
+    #     file_loc=GRUB_CONF_LOC
     #     self.sender().parent().deleteLater()
     #     self.setUiElements()
 
@@ -1228,7 +1251,7 @@ class Ui(QtWidgets.QMainWindow):
             view_default=get_preference('view_default')
             self.view_btn_win =ViewButtonUi(new_loc)
             
-            if view_default=='None':
+            if view_default==None:
                 self.view_btn_win.show()
                 
             elif view_default=='on_the_application_itself':
@@ -1406,7 +1429,7 @@ class Ui(QtWidgets.QMainWindow):
             subprocess.Popen([f'rm \'{DATA_LOC}/snapshots/{arg}\''],shell=True)
             global file_loc
             if file_loc == f'{DATA_LOC}/snapshots/{arg}':
-                file_loc=CONF_LOC
+                file_loc=GRUB_CONF_LOC
                 if self.verticalLayout.itemAt(3):
                     self.verticalLayout.itemAt(3).widget().deleteLater()
             self.setUiElements(only_snapshots=True)
@@ -1507,11 +1530,11 @@ class Ui(QtWidgets.QMainWindow):
                 # printer('yes')
                 default_entry =get_value('GRUB_DEFAULT=',self.issues)
                 # printer('grub_default')
-                if (default_entry !='saved' and default_entry.lower() !='none') and btn.isChecked():
+                if (default_entry !='saved' and default_entry !=None) and btn.isChecked():
                     if btn  in self.original_modifiers:
                         self.original_modifiers.remove(btn)  
                     # printer('1st')  
-                elif (default_entry =='saved' or default_entry.lower() =='none') and not btn.isChecked():
+                elif (default_entry =='saved' or default_entry ==None) and not btn.isChecked():
                     if btn in self.original_modifiers:
                         self.original_modifiers.remove(btn)
                     # printer('2nd')
@@ -1533,7 +1556,7 @@ class Ui(QtWidgets.QMainWindow):
         try:
             current_item = self.configurations[self.comboBox_configurations.currentIndex()]
             # print(current_item+':current_item')
-            # if current_item==CONF_LOC or current_item=='/etc/default/grub(modified)':
+            # if current_item==GRUB_CONF_LOC or current_item=='/etc/default/grub(modified)':
             
             # print('yes')
             if len(self.original_modifiers)>0:
@@ -1550,7 +1573,7 @@ class Ui(QtWidgets.QMainWindow):
                     self.comboBox_configurations.blockSignals(False)
             else:
                 self.btn_reset.setEnabled(False)
-                if CONF_LOC in self.configurations[self.comboBox_configurations.currentIndex()]:
+                if GRUB_CONF_LOC in self.configurations[self.comboBox_configurations.currentIndex()]:
                     self.btn_set.setEnabled(False)
                 else:
                     self.btn_set.setEnabled(True)
@@ -1771,6 +1794,8 @@ class SetRecommendations(QtWidgets.QMainWindow):
         def btn_ignore_callback(self):
             clear_layout(HLayout)
         return btn_ignore_callback
+
+
 
 def main():
     
