@@ -64,7 +64,7 @@ def _test_ignore_changes(qtbot,mw,grub_default_ind):
                 break
     
     #check if new snapshot actually ignored the changes
-    with open(f'{HOME}/.grub-editor/snapshots/{date_time}') as f:
+    with open(f'{main.DATA_LOC}/snapshots/{date_time}') as f:
         new_data =f.read()
     
     assert new_data ==conf_data
@@ -100,7 +100,7 @@ def _test_add_changes_snapshot(qtbot,mw):
     #check if it is showing a modified version of /etc/default/grub  
     assert '(modified)' in mw.configurations[mw.comboBox_configurations.currentIndex()]
     
-    new_snapshot=f'{HOME}/.grub-editor/snapshots/{date_time}'
+    new_snapshot=f'{main.DATA_LOC}/snapshots/{date_time}'
     with open(new_snapshot) as f:
         new_data = f.read()
         
@@ -192,7 +192,7 @@ def test_btn_delete_snapshot(qtbot):
         if text == date_time:
             new_snapshot_ind = i
             break
-    assert main.CONF_LOC== mw.configurations[mw.comboBox_configurations.currentIndex()]
+    assert main.GRUB_CONF_LOC== mw.configurations[mw.comboBox_configurations.currentIndex()]
     
     #now that we have found the index of the snapshot we have just created 
     #Lets find the delete btn of the snapshot
@@ -215,7 +215,7 @@ def test_btn_delete_snapshot(qtbot):
     
     qtbot.mouseClick(btn_delete,QtCore.Qt.LeftButton)
     sleep(1)
-    assert main.CONF_LOC+"(modified)"== mw.configurations[mw.comboBox_configurations.currentIndex()]
+    assert main.GRUB_CONF_LOC+"(modified)"== mw.configurations[mw.comboBox_configurations.currentIndex()]
     
     assert mw.VLayout_snapshot.itemAt(new_snapshot_ind).itemAt(3).widget() != btn_delete
 
@@ -250,7 +250,7 @@ def test_btn_view(qtbot):
     assert btn_view.text()=='view'
     
     #delete the preferences file
-    subprocess.run([f"rm {HOME}/.grub-editor/preferences/main.json"],shell=True)
+    subprocess.run([f"rm {main.CONFIG_LOC}/preferences/main.json"],shell=True)
     
     qtbot.mouseClick(btn_view, QtCore.Qt.LeftButton)
     
@@ -288,7 +288,6 @@ def test_btn_view(qtbot):
 def test_btn_set(qtbot):
     mw=main.Ui()
     main.MainWindow=mw
-    #todo make a failing test as set button currently faulty
     mw.tabWidget.setCurrentIndex(1)
     
     
@@ -298,7 +297,7 @@ def test_btn_set(qtbot):
     row=mw.VLayout_snapshot.itemAt(0).layout()
     btn_set = row.itemAt(4).widget()
     snapshot_name=row.itemAt(0).widget().text()
-    assert main.file_loc==main.CONF_LOC
+    assert main.file_loc==main.GRUB_CONF_LOC
     qtbot.mouseClick(btn_set,QtCore.Qt.LeftButton)
     
     assert mw.lbl_status.text() =="Waiting for authentication"
@@ -316,6 +315,6 @@ def test_btn_set(qtbot):
     with qtbot.waitSignal(mw.set_snapshot_worker.signals.finished,timeout=30*1000):
         pass
 
-    conf_sum = subprocess.check_output([f"sha256sum {main.CONF_LOC}"],shell=True).decode()
-    snapshot_sum = subprocess.check_output([f"sha256sum {HOME}/.grub-editor/snapshots/{snapshot_name}"],shell=True).decode()
+    conf_sum = subprocess.check_output([f"sha256sum {main.GRUB_CONF_LOC}"],shell=True).decode()
+    snapshot_sum = subprocess.check_output([f"sha256sum {main.DATA_LOC}/snapshots/{snapshot_name}"],shell=True).decode()
     assert conf_sum[:65]==snapshot_sum[:65]

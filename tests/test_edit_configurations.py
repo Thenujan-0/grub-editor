@@ -131,14 +131,17 @@ def test_comboBox_configurations(qtbot):
     
     
     snapshot_test="""GRUB_DEFAULT="""
-    subprocess.run([f' echo "{snapshot_test}" > {HOME}/.grub-editor/snapshots/test_snapshot'],shell=True)
-    main.set_value("GRUB_DEFAULT=",temp_entry,target_file=f"{HOME}/.grub-editor/snapshots/test_snapshot")
+    print(f' echo "{snapshot_test}" > {main.DATA_LOC}/snapshots/test_snapshot')
+    subprocess.run([f' echo "{snapshot_test}" > {main.DATA_LOC}/snapshots/test_snapshot'],shell=True)
+    main.set_value("GRUB_DEFAULT=",temp_entry,target_file=f"{main.DATA_LOC}/snapshots/test_snapshot")
     mw.setUiElements(only_snapshots=True)
     mw.comboBox_configurations.setCurrentIndex(mw.configurations.index("test_snapshot"))
 
     
     #check if the correct value for grub default was shown
     assert mw.all_entries[mw.comboBox_grub_default.currentIndex()] ==temp_entry
+    
+    
     
 def test_btn_set(qtbot):
     mw = main.Ui()
@@ -162,3 +165,20 @@ def test_btn_set(qtbot):
     assert mw.original_modifiers ==[]
     print(mw.configurations[mw.comboBox_configurations.currentIndex()])
     assert "(modified)" not in mw.configurations[mw.comboBox_configurations.currentIndex()]
+
+def checkBox_look_for_other_os(qtbot):
+    ''' Test if this comboBox defaults to not checked if GRUB_DISABLE_OS_PROBER wasn't found or commented ''' 
+    mw=main.Ui()
+    main.MainWindow=mw
+    qtbot.addWidget(mw)
+
+    test_config1="""#GRUB_DISABLE_OS_PROBER=false"""
+
+
+    tmp_file=f'{main.CACHE_LOC}/temp9.txt'
+    subprocess.run([f'touch {tmp_file}'],shell=True)
+    
+    with open(tmp_file,'w') as f:
+        f.write(test_config1)
+        
+    main.get
