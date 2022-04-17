@@ -512,8 +512,11 @@ class Ui(QtWidgets.QMainWindow):
 
         self.comboBox_configurations.setCurrentIndex(0)
         
+        #todo remove the following lines after some testing
+        if self.comboBox_configurations.signalsBlocked():
+            raise ValueError("btn_reset_callback signals of comboBoxconfigurations are blocked")
         #todo check if this line is necessary
-        self.comboBox_configurations.blockSignals(False)
+        # self.comboBox_configurations.blockSignals(False)
 
 
     def checkBox_show_menu_on_toggle(self):
@@ -703,27 +706,22 @@ class Ui(QtWidgets.QMainWindow):
         if crct_value != None:
             set_kernel_version_fixer(crct_value)
         
-        # elif not ( invalid_value[-1]=="\"" and invalid_value[0]=="\""):
-        #     print("Missing quotation marks",invalid_value)
-        #     if invalid_value in self.all_entries:
-        #         quo_marks_fixer(invalid_value)
-            
-            # elif #todo
             
         self.set_comboBox_grub_default_style()
         
     def set_comboBox_grub_default_style(self):
         
-        ''' Sets the correct style for comboBOx_grub_default by checking if the current entry is invalid or not '''
+        ''' Sets the correct style for comboBox_grub_default by checking 
+        if the current entry is invalid or not '''
         
-        
+        self.comboBox_grub_default_invalid_style="""QComboBox {
+background: #ff5145;
+color:black;
+}"""
         current_is_invalid=False
         for entry in self.invalid_entries:
             if entry == self.all_entries[self.comboBox_grub_default.currentIndex()]:
-                self.comboBox_grub_default.setStyleSheet("""QComboBox {
-        background: #ff5145;
-        color:black;
-        }""")
+                self.comboBox_grub_default.setStyleSheet(self.comboBox_grub_default_invalid_style)
                 current_is_invalid=True
                 break
         if not current_is_invalid:
