@@ -186,6 +186,11 @@ def test_comboBox_grub_default_numbers(qtbot):
     main.MainWindow=mw
     qtbot.addWidget(mw)
     
+    #close that dialog if it exists because it poped up because /etc/default/grub has an invalid entry
+    if mw.dialog_invalid_default_entry:
+        mw.dialog_invalid_default_entry.close()
+    
+    
     test_config1="""GRUB_DEFAULT=\"1\""""
     
     sfile=create_snapshot(test_config1)
@@ -197,7 +202,18 @@ def test_comboBox_grub_default_numbers(qtbot):
     
     #todo test 0 >2
                 #1 >2
-
+    test_config2="GRUB_DEFAULT=\"0>1\""
+    sfile=create_snapshot(test_config2)
+    mw.setUiElements()
+    mw.comboBox_configurations.setCurrentIndex(mw.configurations.index(sfile))
+    
+    assert mw.dialog_invalid_default_entry.isVisible()
+    assert mw.comboBox_grub_default.styleSheet()==mw.comboBox_grub_default_invalid_style
+    
+    test_config3="GRUB_DEFAULT=\"1>1\""
+    #todo
+    
+    
 def test_missing_double_quotes_default(qtbot):
     mw = main.Ui()
     main.MainWindow=mw
