@@ -39,11 +39,11 @@ class DialogUi(QtWidgets.QDialog):
         
         self.show()
     
-    def remove_cancel_btn(self):
+    def remove_btn_cancel(self):
         self.horizontalLayout.takeAt(0).widget().deleteLater()
         self.btn_cancel.setParent(None)
     
-    def add_cancel_btn(self):
+    def add_btn_cancel(self):
         self.btn_cancel=QtWidgets.QPushButton()
         self.btn_cancel.setText("Cancel")
         self.horizontalLayout.insertWidget(0,self.btn_cancel)
