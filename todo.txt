@@ -20,3 +20,5 @@ checkbox do this everytime in invalid grub default fixer
 
 if user preferes fixing the invalid_kernel_version then inform the user that permissions are needed fix the invalid kernerl
     if /etc/default/grub has invallid entry
+
+do not allow brackets in the value of snapshot names
