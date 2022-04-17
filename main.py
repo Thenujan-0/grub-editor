@@ -93,26 +93,27 @@ try:
 except FileNotFoundError:
     subprocess.run([f'mkdir -p {DATA_LOC}/logs'],shell=True)
     subprocess.run([f'touch {DATA_LOC}/logs/main.log'],shell=True)
+    logging.basicConfig(filename=f'{DATA_LOC}/logs/main.log',format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    
 
 def check_dual_boot():
     out = subprocess.check_output(['pkexec os-prober'],shell=True).decode()
 
-
+    
 def get_value(name,issues,read_file=None):
     """arguments are  the string to look for 
     and the list to append issues to
     Note: It does some minor edits to the value read from the file before returning it if name==GRUB_DEFAULT
-    1.remove double quotes if necessary
-    2.replace ">" with " >"
+    1.if the value is not saved then check for double quotes, if it has double quotes then it will be removed if not then (Missing ") will be added
+    2.replace " >" with ">" to make sure it is found as invalid
     
     """
-
+    
     if read_file is None:
         read_file=file_loc
     
     
     #check if last character is = to avoid possible bugs
-
     if name[-1] != '=':
         raise ValueError("name passed for get_value doesnt contain = as last character")
 
@@ -134,25 +135,45 @@ def get_value(name,issues,read_file=None):
                 continue
             elif sline.find(name)==0:
                 start_index= line.find(name)+len(name)
-                val=line[start_index:]
+                
+                #find the index of the last chracter in the value
+                for i in reversed(range(len(line))):
+                    if line[i]!=" " :
+                        end_index=i
+                        break
+                
+                #to make sure IndexError doesnt occur because no trailing spaces are there
+                # print(start_index,end_index,'target')
+                if i!=0:
+                    val=line[start_index:end_index+1]
+                else:
+                    val=line[start_index:]
 
         #remove the double quotes in the end and the begining
         if name=="GRUB_DEFAULT=" and val!=None:
-            if val[-1]=='"':
-                val=val[:-1]
-            if val[0]=='"':
-                val=val[1:]
-            if val.find(">")>0:
+            if val.find(">")>0 and val.find(" >")==-1:
                 val =val.replace(">"," >")
+            elif val.find(">")>0 and val.find(" >")>0:
+                #GRUB default is obviously invalid to make sure that other functions detect that its invalid lets just
+                val.replace(" >",">")
                 
-        elif name=="GRUB_DISABLE_OS_PROBER=" and val==None:
-            val="true"
+            if val !="saved":
+                if val[0]=="\"" and val[-1]=='"':
+                    val=val[1:-1]
+                else:
+                    val+=" (Missing \")"
+            
+                
+        
             
         if val==None:
             if found_commented and comment_issue_string not in issues:
                 issues.append(comment_issue_string)
             else:
                 issues.append(f"{name} was not found in {read_file}")
+        if name=="GRUB_DISABLE_OS_PROBER=" and val==None:
+            val="true"
+            
         return val
 
 
@@ -171,7 +192,7 @@ def set_value(name,val,target_file=f'{CACHE_LOC}/temp.txt'):
     if name[-1] != '=':
         raise ValueError("name passed for set_value doesn't contain = as last character")
     
-    if name =="GRUB_DEFAULT=":
+    if name =="GRUB_DEFAULT=" and val!="saved":
         if val[0]!='"' and val[-1]!='"':
             val='"'+val+'"'
         if " >" in val:
@@ -214,7 +235,9 @@ def set_value(name,val,target_file=f'{CACHE_LOC}/temp.txt'):
         
 def initialize_temp_file(file_path="/etc/default/grub"):
     """copies the file to ~/.cache/grub-editor/temp.txt so that set_value can start writing changes to it"""
-    subprocess.run([f'cp \'{file_path}\' {CACHE_LOC}/temp.txt'],shell=True)
+    to_exec=f'cp \'{file_path}\' {CACHE_LOC}/temp.txt'
+    print(to_exec)
+    subprocess.run([to_exec],shell=True)
       
 
 
@@ -569,14 +592,15 @@ class Ui(QtWidgets.QMainWindow):
     def handle_invalid_default_entry(self,invalid_value):
         pref_show = get_preference("show_invalid_default_entry")
         
-        def create_win(btn_cancel=True):
+        def create_win():
             ''' Creates a window to show that the grub default has an invalid default entry '''
                 # print(btn_cancel)
-            self.dialog_invalid_default_entry=DialogUi(btn_cancel=btn_cancel)
-            self.dialog_invalid_default_entry.label.setText("/etc/grub/default currently has an invalid default entry")
+            self.dialog_invalid_default_entry=DialogUi(btn_cancel=False)
+            self.dialog_invalid_default_entry.label.setText(f"{file_loc} currently has an invalid default entry")
             self.dialog_invalid_default_entry.show()
-        
-        def set_fixer(crct_value):
+            
+            
+        def set_kernel_version_fixer(crct_value):
             ''' Adds the fix btn to the invalid_default_entry_dialog or does the action preffered by
             the user pereference file'''
             pref_fix = get_preference("invalid_kernel_version")
@@ -597,13 +621,8 @@ class Ui(QtWidgets.QMainWindow):
                 if read_checkbox and dwin.checkBox.isChecked():
                     set_value("invalid_kernel_version","fix")
                 
-                
-                # set_value("GRUB_DEFAULT=",crct_value)
-                # print('set grub default to the correct one')
-                # self.show_saving()
-                
-                # self.setUiElements()
                 dwin.close()
+                
             if pref_fix==None:
                 dwin = self.dialog_invalid_default_entry
                 dwin.btn_ok.setText('Fix')
@@ -632,9 +651,10 @@ class Ui(QtWidgets.QMainWindow):
                     if read_checkbox and dwin.checkBox.isChecked():
                         set_value("invalid_kernel_version","cancel")
                     dwin.close()
-                    
+                dwin.add_btn_cancel()
                 dwin.btn_ok.clicked.connect(fix)
-                dwin.btn_ok.clicked.connect(cancel)
+                dwin.btn_cancel.clicked.connect(cancel)
+                
             elif pref_fix=="fix":
                 fix()
             elif pref_fix=="cancel":
@@ -675,18 +695,28 @@ class Ui(QtWidgets.QMainWindow):
                         
         except AttributeError as e:
             printer("invalid default entry is not fixable")
-            printer(traceback.format_exc())
+            # printer(traceback.format_exc())
             
         if pref_show==None:
-            create_win(True)
+            create_win()
             
         if crct_value != None:
-            set_fixer(crct_value)
-        # unique_dialog_win =True
-                        
-                            
-        # if not unique_dialog_win:
-        #     create_win()
+            set_kernel_version_fixer(crct_value)
+        
+        # elif not ( invalid_value[-1]=="\"" and invalid_value[0]=="\""):
+        #     print("Missing quotation marks",invalid_value)
+        #     if invalid_value in self.all_entries:
+        #         quo_marks_fixer(invalid_value)
+            
+            # elif #todo
+            
+        self.set_comboBox_grub_default_style()
+        
+    def set_comboBox_grub_default_style(self):
+        
+        ''' Sets the correct style for comboBOx_grub_default by checking if the current entry is invalid or not '''
+        
+        
         current_is_invalid=False
         for entry in self.invalid_entries:
             if entry == self.all_entries[self.comboBox_grub_default.currentIndex()]:
@@ -699,27 +729,38 @@ class Ui(QtWidgets.QMainWindow):
         if not current_is_invalid:
             self.comboBox_grub_default.setStyleSheet("")
     
+    def get_g_default_from_number(self,g_default):
+        ''' Argument could be in 1 >2 format or just plain number like 0 '''
+        sub_ptrn=r"\d >\d"
+        match = re.search(sub_ptrn,g_default)
+        if match is not None:
+            try:
+                main_entry_obj = self.main_entries[int(g_default[0])]
+                sub_entry_obj= main_entry_obj.sub_entries[int(g_default[3])]
+                entry= main_entry_obj.title+" >"+sub_entry_obj.title
+                
+                return entry
+            except IndexError:
+                return None
+        
+        elif g_default.isdigit():
+            main_entry_obj = self.main_entries[int(g_default[0])]
+            entry= main_entry_obj.title
+            if "Advanced options for " in entry:
+                entry= main_entry_obj.title+" >"+main_entry_obj.sub_entries[0].title
+            return entry
+    
+        else:
+            return None
+            
+    
+    
     def set_comboBox_grub_default(self,show_invalid_default=False):
         """ sets the right index to comboBox_grub_default and radio buttons,
         if second argument is true then it will check if the grub default value is invalid and if it is invalid it will show a dialog"""
         
         grub_default_val =get_value('GRUB_DEFAULT=',self.issues)
-        # print(grub_default_val,'grb default val')
-
-
-        # print('checking for invalid entry')
-        #check if an invalid configuration exists
-        # if "(INVALID)" in self.all_entries[-1]:
-        #     # print("removing invalid entry")
-        #     grub_invalid_val = self.all_entries[-1].replace('(INVALID)',"")
-        #     if grub_invalid_val != grub_default_val:
-        #         self.all_entries.pop(-1)
-        #         self.comboBox_grub_default.removeItem(len(self.all_entries))
-
-        # else:
-        #     pass
-        #     # print('no invalid entry found')
-        #     # print('last entry is ',self.all_entries[-1])
+    
         
         if grub_default_val=='saved':
             self.previously_booted_entry.setChecked(True)
@@ -729,17 +770,30 @@ class Ui(QtWidgets.QMainWindow):
             self.predefined.setChecked(False)
         else:
             self.predefined.setChecked(True)
-            # printer(self.all_entries)
-            # grub_default_val=grub_default_val.replace('>',' >')
+            
+            # # If grub_default doesnt contain double quotation marks as the first and last character then it is an invalid entry
+            # if not is_vld_g_default(grub_default_val):
+            #     self.handle_invalid_default_entry(grub_default_val)
+            #     return None
+
+            
             try:
+                
                 if grub_default_val in self.invalid_entries:
                     self.handle_invalid_default_entry(grub_default_val)
                 self.comboBox_grub_default.setCurrentIndex(self.all_entries.index(grub_default_val))    
-            except ValueError:
                 
+            except ValueError:
                 #add the invalid entry to the combo box
                 invalid_value=get_value('GRUB_DEFAULT=',self.issues)
-
+                
+                from_number =self.get_g_default_from_number(invalid_value)
+                if  from_number  != None:
+                    index = self.all_entries.index(from_number)
+                    self.comboBox_grub_default.setCurrentIndex(index)
+                    
+                    #to make sure that the code below is not executed
+                    return None
 
                 
                 #concistency iun showing entries
@@ -748,13 +802,10 @@ class Ui(QtWidgets.QMainWindow):
                 #check if it already exists in the grub_default comboBox
                 if invalid_value not in self.all_entries:
                     
-                    # print(self.comboBox_grub_default.itemAt(0))
                     self.comboBox_grub_default.addItem(invalid_value)
                     model =self.comboBox_grub_default.model()
-                    # print(self.comboBox_grub_default.itemText(1))
                     self.all_entries.append(invalid_value)
                     self.invalid_entries.append(invalid_value)
-                    # print(self.all_entries[-1],'last item is')
                     model.setData(model.index(len(self.all_entries)-1, 0), QtGui.QColor("#ff5145"), QtCore.Qt.BackgroundRole)
                     model.setData(model.index(len(self.all_entries)-1, 0), QtGui.QColor("black"), QtCore.Qt.ForegroundRole)
                     self.comboBox_grub_default.setCurrentIndex(len(self.all_entries)-1)
@@ -842,8 +893,9 @@ class Ui(QtWidgets.QMainWindow):
             else:
                 self.checkBox_boot_default_entry_after.setChecked(True)
                 
-                
+            self.comboBox_grub_default.blockSignals(True)
             self.set_comboBox_grub_default(show_invalid_default=show_issues)
+            self.comboBox_grub_default.blockSignals(False)
             
         self.createSnapshotList()
 
@@ -866,6 +918,7 @@ class Ui(QtWidgets.QMainWindow):
         if not only_snapshots:
             self.original_modifiers=[]
         self.handle_modify()
+        self.set_comboBox_grub_default_style()
         
         
     def set_lbl_details(self):
@@ -945,8 +998,10 @@ class Ui(QtWidgets.QMainWindow):
     def set_conf_and_update_lbl_details(self):
         try:
             if "update-grub" in os.listdir( "/usr/bin/"):
-                process = subprocess.Popen([f' pkexec sh -c \'echo \"authentication completed\"  && \
-                        cp -f  "{CACHE_LOC}/temp.txt"  '+GRUB_CONF_LOC +' && sudo update-grub 2>&1 \'  '],
+                to_exec=f' pkexec sh -c \'echo \"authentication completed\"  && \
+                        cp -f  "{CACHE_LOC}/temp.txt"  '+GRUB_CONF_LOC +' && sudo update-grub 2>&1 \'  '
+                # print(to_exec)
+                process = subprocess.Popen([to_exec],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     shell=True)
@@ -1011,7 +1066,7 @@ class Ui(QtWidgets.QMainWindow):
             self.lbl_status.setStyleSheet('color: red')
             
     def onSaveConfsFinish(self):
-        self.setUiElements()
+        self.setUiElements(show_issues=False)
         self.HLayout_save.itemAt(1).widget().deleteLater()
         self.loading_bar.setParent(None)
 
@@ -1107,7 +1162,9 @@ class Ui(QtWidgets.QMainWindow):
                 file.write(data)
         else:
             # printer('created a snapshot grom cache')
-            subprocess.run([f'cp {CACHE_LOC}/temp.txt {DATA_LOC}/snapshots/{date_time}'],shell=True)
+            to_execute=f'cp {CACHE_LOC}/temp.txt {DATA_LOC}/snapshots/{date_time}'
+            # print(to_execute)
+            subprocess.run([to_execute],shell=True)
         self.setUiElements(only_snapshots=True)
         self.handle_modify()
         # print('setUi elems was called')
@@ -1356,12 +1413,13 @@ class Ui(QtWidgets.QMainWindow):
         
     def update_lbl_status(self,line):
         try:
-            # print('executing the command')
-            # print(f'pkexec sh -c  \' cp -f  "{DATA_LOC}/snapshots/{line}" {write_file} && sudo update-grub  \' ')
             if "update-grub" in os.listdir( "/usr/bin/"):
-                process = subprocess.Popen([f'pkexec sh -c  \' cp -f  "{DATA_LOC}/snapshots/{line}" {write_file} && update-grub  \' '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
+                to_execute=f'pkexec sh -c  \' cp -f  "{DATA_LOC}/snapshots/{line}" {write_file} && update-grub  \' '
+                # print(to_execute)
+                process = subprocess.Popen([to_execute], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
             else:
-                process = subprocess.Popen([f'pkexec sh -c  \' cp -f  "{DATA_LOC}/snapshots/{line}" {write_file} && grub-mkconfig -o /boot/grub/grub.cfg  \' '], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
+                to_exec=f'pkexec sh -c  \' cp -f  "{DATA_LOC}/snapshots/{line}" {write_file} && grub-mkconfig -o /boot/grub/grub.cfg  \' '
+                process = subprocess.Popen([to_exec], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
             self.lbl_details_text='Waiting for authentication \n'
             
             self.set_lbl_details()
@@ -1482,24 +1540,15 @@ class Ui(QtWidgets.QMainWindow):
         try:
             """ current index changed callback """
             # printer('combo box currentIndexChanged')
-            current_is_invalid=False
-            for entry in self.invalid_entries:
-                if entry == self.all_entries[self.comboBox_grub_default.currentIndex()]:
-                    self.comboBox_grub_default.setStyleSheet("""QComboBox {
-  background: #ff5145;
-  color:black;
-}""")
-                    current_is_invalid=True
-                    break
-            if not current_is_invalid:
-                self.comboBox_grub_default.setStyleSheet("")
+            self.set_comboBox_grub_default_style()
             
                 
             
             comboBox = self.sender()
             combo_text =self.all_entries[comboBox.currentIndex()]
             grub_default = get_value('GRUB_DEFAULT=',self.issues)
-            if grub_default !=combo_text and not self.modified_original:
+            current_conf=self.configurations[self.comboBox_configurations.currentIndex()]
+            if grub_default !=combo_text and not "(modified)" in current_conf:
                 # self.modified_original = True
                 if comboBox not in self.original_modifiers:
                     self.original_modifiers.append(self.sender())
@@ -1507,7 +1556,6 @@ class Ui(QtWidgets.QMainWindow):
             elif grub_default ==combo_text:
                 if comboBox in self.original_modifiers:
                     self.original_modifiers.remove(comboBox)
-
             self.handle_modify()
         except Exception as e:
             printer(traceback.format_exc())
