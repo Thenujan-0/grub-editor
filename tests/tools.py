@@ -1,7 +1,19 @@
 import subprocess
 import logging
 import traceback
+from random import randint
+import os
+import sys
 
+
+PATH = os.path.dirname(os.path.realpath(__file__))
+
+ROOT_PATH=PATH[0:-6]
+sys.path.append(ROOT_PATH)
+print(ROOT_PATH)
+import main
+
+HOME=os.getenv("HOME")
 
 def change_comboBox_current_index(mw):
     curr_ind = mw.comboBox_grub_default.currentIndex()
@@ -65,3 +77,25 @@ def windows():
         final_window_list.append(tmp[1:])
     # print(final_window_list)
     return final_window_list,final_id_list
+
+def create_tmp_file(data):
+    value =randint(0,20)
+    tmp_file=f'{HOME}/.cache/grub-editor/temp{value}.txt'
+    subprocess.run([f'touch {tmp_file}'],shell=True)
+    
+    with open(tmp_file,'w') as f:
+        f.write(data)
+    
+    return tmp_file
+
+def create_snapshot(data):
+    num=randint(0,20)
+    
+    snapshot_name=f"{main.DATA_LOC}/snapshots/test_snapshot{num}"
+    subprocess.run([f"touch {snapshot_name}"],shell=True)
+    
+    with open(snapshot_name,'w') as f:
+        f.write(data)
+    
+    return f"test_snapshot{num}"
+    

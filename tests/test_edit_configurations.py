@@ -3,7 +3,7 @@ import sys;
 from time import sleep
 from PyQt5 import QtWidgets,QtCore
 import subprocess
-from tools import change_comboBox_current_index
+from tools import change_comboBox_current_index ,create_tmp_file,create_snapshot
 
 HOME =os.getenv('HOME')
 PATH=os.path.dirname(os.path.realpath(__file__))
@@ -166,7 +166,7 @@ def test_btn_set(qtbot):
     print(mw.configurations[mw.comboBox_configurations.currentIndex()])
     assert "(modified)" not in mw.configurations[mw.comboBox_configurations.currentIndex()]
 
-def checkBox_look_for_other_os(qtbot):
+def test_checkBox_look_for_other_os(qtbot):
     ''' Test if this comboBox defaults to not checked if GRUB_DISABLE_OS_PROBER wasn't found or commented ''' 
     mw=main.Ui()
     main.MainWindow=mw
@@ -175,10 +175,35 @@ def checkBox_look_for_other_os(qtbot):
     test_config1="""#GRUB_DISABLE_OS_PROBER=false"""
 
 
-    tmp_file=f'{main.CACHE_LOC}/temp9.txt'
-    subprocess.run([f'touch {tmp_file}'],shell=True)
+    tmp_file=create_tmp_file(test_config1)
+    issues=[]
+    val =main.get_value("GRUB_DISABLE_OS_PROBER=",issues,tmp_file)
+    assert val =="true"
+    assert issues ==[f"GRUB_DISABLE_OS_PROBER= is commented out in {tmp_file}"]
+
+def test_comboBox_grub_default_numbers(qtbot):
+    mw = main.Ui()
+    main.MainWindow=mw
+    qtbot.addWidget(mw)
     
-    with open(tmp_file,'w') as f:
-        f.write(test_config1)
-        
-    main.get
+    test_config1="""GRUB_DEFAULT=\"1\""""
+    
+    sfile=create_snapshot(test_config1)
+    mw.setUiElements(only_snapshots=True)
+    mw.comboBox_configurations.setCurrentIndex(mw.configurations.index(sfile))
+    
+    assert mw.all_entries[mw.comboBox_grub_default.currentIndex()]==mw.all_entries[1]
+    
+    
+    #todo test 0 >2
+                #1 >2
+
+def test_missing_double_quotes_default(qtbot):
+    mw = main.Ui()
+    main.MainWindow=mw
+    qtbot.addWidget(mw)
+    
+    test_config="""GRUB_DEFAULT=Manjaro Linux
+GRUB_TIMEOUT=20
+GRUB_TIMEOUT_STYLE=menu
+GRUB_DISTRIBUTOR=\"Manjaro\""""

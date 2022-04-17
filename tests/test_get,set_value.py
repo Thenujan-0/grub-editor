@@ -3,6 +3,7 @@ import main
 import subprocess
 import os 
 import sys
+from tools import create_tmp_file
 commented_config="""#GRUB_DEFAULT="Manjaro Linux"
 #GRUB_TIMEOUT=20
 #GRUB_TIMEOUT_STYLE=menu
@@ -31,13 +32,12 @@ GRUB_PRELOAD_MODULES="part_gpt part_msdos"
 PATH= os.path.dirname(os.path.realpath(__file__))
 HOME=os.getenv('HOME')
 
+
+
+
+
 def test_commented_lines(qtbot):
-    tmp_file=f'{main.CACHE_LOC}/temp1.txt'
-    subprocess.run([f'touch {tmp_file}'],shell=True)
-    
-    with open(tmp_file,'w') as f:
-        f.write(commented_config)
-    
+    tmp_file=create_tmp_file(commented_config)
     issues=[]
     val =main.get_value("GRUB_DEFAULT=",issues,tmp_file)
     assert val==None
@@ -47,7 +47,7 @@ def test_commented_lines(qtbot):
     
     
     issues=[]
-    assert main.get_value("GRUB_DEFAULT=",issues,tmp_file)=="Garuda Linux"
+    assert main.get_value("GRUB_DEFAULT=",issues,tmp_file)=='Garuda Linux'
     
         
 config_fake_comment="""
@@ -66,17 +66,31 @@ def test_fake_comment_after_get(qtbot):
     main.MainWindow=mw
     qtbot.addWidget(mw)
 
-    tmp_file=f'{main.CACHE_LOC}/temp2.txt'
-    subprocess.run([f'touch {tmp_file}'],shell=True)
-    
-    with open(tmp_file,'w') as f:
-        f.write(config_fake_comment)
+    tmp_file=create_tmp_file(config_fake_comment)
     
     issues = []
     val = main.get_value("GRUB_DEFAULT=",issues,read_file=tmp_file)
-    assert val == "Manjaro Linux"
+    assert val == 'Manjaro Linux'
     
     assert issues ==[]
+
+
+
+def test_quotation_marks_trailing_space(qtbot):
+    test_config="GRUB_DEFAULT=\"0\" "
+    
+    tmp_file=create_tmp_file(test_config)
+    
+    issues=[]
+    val = main.get_value("GRUB_DEFAULT=",issues,tmp_file)
+    assert val=='0'
+    
+
+
+
+
+
+
 
 #before means that fake comment comes before the actual value
 
@@ -92,9 +106,6 @@ GRUB_CMDLINE_LINUX=""
 """
 
 def test_fake_comment_before_get(qtbot):
-    mw=main.Ui()
-    main.MainWindow=mw
-    qtbot.addWidget(mw)
     
     tmp_file=f'{main.CACHE_LOC}/temp3.txt'
     subprocess.run([f'touch {tmp_file}'],shell=True)
@@ -105,7 +116,7 @@ def test_fake_comment_before_get(qtbot):
     issues=[]
     val =main.get_value("GRUB_DEFAULT=",issues,tmp_file)
     assert issues ==[]
-    assert val == "Manjaro Linux"
+    assert val == 'Manjaro Linux'
     
     
 config_last="""
@@ -114,9 +125,6 @@ GRUB_TIMEOUT=20
 GRUB_TIMEOUT_STYLE=menu"""
 
 def test_last_value(qtbot):
-    mw=main.Ui()
-    main.MainWindow=mw
-    qtbot.addWidget(mw)
     
     tmp_file=f'{main.CACHE_LOC}/temp4.txt'
     subprocess.run([f'touch {tmp_file}'],shell=True)
@@ -131,9 +139,6 @@ def test_last_value(qtbot):
 
 def test_not_in_conf_val(qtbot):
     ''' Looking for a value that is not mentioned in the configuration '''
-    mw=main.Ui()
-    main.MainWindow=mw
-    qtbot.addWidget(mw)
     
     tmp_file=f'{main.CACHE_LOC}/temp5.txt'
     subprocess.run([f'touch {tmp_file}'],shell=True)
@@ -144,7 +149,6 @@ def test_not_in_conf_val(qtbot):
         
     val =main.get_value("GRUB_CMDLINE_LINUX=",issues,tmp_file)
     assert issues ==[f"GRUB_CMDLINE_LINUX= was not found in {tmp_file}"]
-    # todo exact issue
     assert val == None
     
     main.set_value("GRUB_CMDLINE_LINUX=","something fake",tmp_file)
@@ -152,3 +156,25 @@ def test_not_in_conf_val(qtbot):
     new_val = main.get_value("GRUB_CMDLINE_LINUX=",issues,tmp_file)
     assert new_val =="something fake"
     assert issues==[]
+    
+def test_missing_double_quotes(qtbot):
+    config="GRUB_DEFAULT=Manjaro Linux"
+    tmp_file=create_tmp_file(config)
+    
+    issues=[]
+    val =main.get_value("GRUB_DEFAULT=",issues,tmp_file)
+    
+    assert issues == []
+    assert val == "Manjaro Linux (Missing \")"
+    
+    
+def test_grub_default_saved():
+    config="GRUB_DEFAULT=saved"
+    tmp_file=create_tmp_file(config)
+    
+    issues=[]
+    val = main.get_value("GRUB_DEFAULT=",issues,tmp_file)
+    assert val=="saved"
+    assert issues==[]
+    
+    
