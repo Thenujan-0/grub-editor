@@ -157,12 +157,11 @@ def get_value(name,issues,read_file=None):
                 #GRUB default is obviously invalid to make sure that other functions detect that its invalid lets just
                 val.replace(" >",">")
                 
-            if val !="saved":
+            if val !="saved" :
                 if val[0]=="\"" and val[-1]=='"':
                     val=val[1:-1]
-                else:
+                elif not val.replace(" >","").isdigit():
                     val+=" (Missing \")"
-            
                 
         
             
@@ -173,7 +172,6 @@ def get_value(name,issues,read_file=None):
                 issues.append(f"{name} was not found in {read_file}")
         if name=="GRUB_DISABLE_OS_PROBER=" and val==None:
             val="true"
-            
         return val
 
 
@@ -731,6 +729,10 @@ color:black;
         ''' Argument could be in 1 >2 format or just plain number like 0 '''
         sub_ptrn=r"\d >\d"
         match = re.search(sub_ptrn,g_default)
+        
+        #to avoid anyother format than "1 >2"
+        if len(g_default)!=4:
+            return None
         if match is not None:
             try:
                 main_entry_obj = self.main_entries[int(g_default[0])]
