@@ -731,7 +731,7 @@ color:black;
         match = re.search(sub_ptrn,g_default)
         
         #to avoid anyother format than "1 >2"
-        if len(g_default)!=4:
+        if len(g_default)==4 ^ len(g_default)==1:
             return None
         if match is not None:
             try:
