@@ -1,3 +1,4 @@
+from calendar import c
 import os;
 import sys;
 from time import sleep
@@ -202,16 +203,36 @@ def test_comboBox_grub_default_numbers(qtbot):
     
     #todo test 0 >2
                 #1 >2
-    test_config2="GRUB_DEFAULT=\"0>1\""
+    test_config2="GRUB_DEFAULT=0>1"
     sfile=create_snapshot(test_config2)
     mw.setUiElements()
+    
     mw.comboBox_configurations.setCurrentIndex(mw.configurations.index(sfile))
     
     assert mw.dialog_invalid_default_entry.isVisible()
     assert mw.comboBox_grub_default.styleSheet()==mw.comboBox_grub_default_invalid_style
     
+    mw.dialog_invalid_default_entry.close()
+    assert not mw.dialog_invalid_default_entry.isVisible()
+        
     test_config3="GRUB_DEFAULT=\"1>1\""
-    #todo
+    sfile=create_snapshot(test_config3)
+    mw.setUiElements()
+    mw.dialog_invalid_default_entry.close()
+    
+    
+    mw.comboBox_configurations.setCurrentIndex(mw.configurations.index(sfile))
+    assert not mw.dialog_invalid_default_entry.isVisible()
+    assert mw.comboBox_grub_default.currentIndex()==2
+    
+    
+    
+    test_config4="GRUB_DEFAULT=0"
+    sfile=create_snapshot(test_config4)
+    mw.setUiElements()
+    mw.comboBox_configurations.setCurrentIndex(mw.configurations.index(sfile))
+    assert not mw.dialog_invalid_default_entry.isVisible()
+    assert mw.comboBox_grub_default.currentIndex()==0
     
     
 def test_missing_double_quotes_default(qtbot):
@@ -223,3 +244,13 @@ def test_missing_double_quotes_default(qtbot):
 GRUB_TIMEOUT=20
 GRUB_TIMEOUT_STYLE=menu
 GRUB_DISTRIBUTOR=\"Manjaro\""""
+    
+    sfile=create_snapshot(test_config)
+    mw.setUiElements()
+    if mw.dialog_invalid_default_entry:
+        mw.dialog_invalid_default_entry.close()
+        
+    mw.comboBox_configurations.setCurrentIndex(mw.configurations.index(sfile))
+    
+    assert mw.comboBox_grub_default.styleSheet()==mw.comboBox_grub_default_invalid_style
+    assert mw.dialog_invalid_default_entry.isVisible()
