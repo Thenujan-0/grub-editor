@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>948</width>
+    <width>1007</width>
     <height>595</height>
    </rect>
   </property>
@@ -121,8 +121,7 @@
                     </size>
                    </property>
                    <property name="styleSheet">
-                    <string notr="true">.QFrame{border:1px solid #010101;
-                                                 border-radius: 10px 10px 10px 10px;}</string>
+                    <string notr="true"/>
                    </property>
                    <property name="frameShape">
                     <enum>QFrame::StyledPanel</enum>
@@ -319,8 +318,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>96</width>
-             <height>55</height>
+             <width>971</width>
+             <height>386</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_8">
@@ -349,7 +348,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>948</width>
+     <width>1007</width>
      <height>32</height>
     </rect>
    </property>
