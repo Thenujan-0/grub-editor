@@ -96,10 +96,20 @@ except FileNotFoundError:
     logging.basicConfig(filename=f'{DATA_LOC}/logs/main.log',format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
 
-def check_dual_boot():
-    out = subprocess.check_output(['pkexec os-prober'],shell=True).decode()
+# def check_dual_boot():
+#    out = subprocess.check_output(['pkexec os-prober'],shell=True).decode()
 
+def remove_quotes(value):
+    """ Removes double quotes or single quotes from the begining and the end
+        Only if the exist in both places
+    """
+    if value[0]=='"' and value[-1]=='"':
+        value=value[1:-1]
+    elif value[0]=="'" and value[-1]=="'":
+        value=value[1:-1]
     
+    return value
+            
 def get_value(name,issues,read_file=None):
     """arguments are  the string to look for 
     and the list to append issues to
@@ -153,7 +163,7 @@ def get_value(name,issues,read_file=None):
         if name=="GRUB_DEFAULT=" and val!=None:
             if val.find(">")>0 and val.find(" >")==-1:
                 val =val.replace(">"," >")
-            elif val.find(">")>0 and val.find(" >")>0:
+            elif val.find(" >")>0:
                 #GRUB default is obviously invalid to make sure that other functions detect that its invalid lets just
                 val.replace(" >",">")
                 
@@ -903,6 +913,10 @@ color:black;
             #set the value of checkBox_look_for_other_os
             #passing an empty string it isnt as issue if GRUB_DISABLE_OS_PROBER is commented or not found
             value = get_value('GRUB_DISABLE_OS_PROBER=',[])
+            
+            #single ,double quotes work 
+            value =remove_quotes(value)
+            
             if value=="false":
                 self.checkBox_look_for_other_os.setChecked(True)
             elif value=="true":
@@ -1089,6 +1103,8 @@ color:black;
             reacts to modifications
         """
         value=get_value("GRUB_DISABLE_OS_PROBER=",self.issues)
+        value=remove_quotes(value)
+        
         cbox=self.checkBox_look_for_other_os
 
         #check if cbox is showing right value
