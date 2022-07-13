@@ -13,3 +13,4 @@ PKGBUILD
 __pycache__
 .qt_for_python/
 pytest.ini
+.vscode/
