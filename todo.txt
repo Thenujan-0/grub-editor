@@ -22,3 +22,6 @@ if user preferes fixing the invalid_kernel_version then inform the user that per
     if /etc/default/grub has invallid entry
 
 do not allow brackets in the value of snapshot names
+
+
+Invalid entry grub default error when look for other os is turned off
