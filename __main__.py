@@ -36,9 +36,7 @@ if (size>5*10^6):
         f.write(new_data)
         
 def except_hook(cls,exception,traceback_):
-	print('adasd asdasd')
 	# sys.__excepthook__(cls, exception, traceback)
-	print('exceas')
 	# logging.error(traceback.format_exc())
 	text = "".join(traceback.format_exception(exception))
 	logging.error("Unhandled exception: %s", text)
