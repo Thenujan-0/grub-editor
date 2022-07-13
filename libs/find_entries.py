@@ -34,19 +34,27 @@ lines =out.splitlines()
 for i in range(len(lines)):
     
     if lines[i][0].isdigit():
-        main_entries.append(MainEntry(lines[i][4:],[]))
+        to_append=MainEntry(lines[i][4:],[])
+        main_entries.append(to_append)
         
     else:
         try:
-            main_entries[-1].sub_entries.append(MainEntry(lines[i][7:],[])) 
+            to_append=MainEntry(lines[i][7:],[])
+            main_entries[-1].sub_entries.append(to_append) 
         except Exception as e:
             print(traceback.format_exc())
             print(e)
             print('error occured as an entry that was thought to be a sub entry couldnt be added to last main entry on the list .\
                   Error might have occured because the main_entries list is empty')
+            print('--------------------------Printing the output of the command to find entries--------------------------------------')
+            print(out)
 
 
 
 for entry in main_entries:
     entry.set_parents_for_children()
+    
+    
+if __name__=="__main__":
+    print(main_entries)
     
