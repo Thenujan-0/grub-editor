@@ -4,7 +4,11 @@
 
 GUI application to manage grub configuration
 
-It workes by editing the /etc/default/grub 
+
+It workes by editing the /etc/default/grub
+
+
+[Website](https://grub-editor.herokuapp.com)
 
 [![License: MIT](https://img.shields.io/github/license/Thenujan-0/grub-editor)](https://opensource.org/licenses/MIT)
 
