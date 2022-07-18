@@ -1,9 +1,7 @@
 #!/usr/bin/python
 from pickle import TRUE
 from venv import create
-from PyQt5 import QtCore ,QtWidgets, uic,QtGui
-from PyQt5.QtWidgets import QMainWindow, QLabel
-from PyQt5.QtWidgets import QGridLayout, QWidget, QDesktopWidget
+
 
 import sys
 from functools import partial
@@ -12,17 +10,26 @@ import subprocess
 import threading
 from datetime import datetime as dt
 from time import sleep
+from time import perf_counter
+
 import os
 from subprocess import PIPE, Popen
-from time import perf_counter
 import traceback
 import json
 import random
 import math 
 import logging
 from threading import Thread
+
+from PyQt5 import QtCore ,QtWidgets, uic,QtGui
+from PyQt5.QtWidgets import QDesktopWidget
+
+
+
 from libs.qt_functools import insert_into, reconnect
 from libs.worker import Worker
+from libs.find_entries import find_entries
+
 from widgets.dialog import DialogUi
 from widgets.error_dialog import ErrorDialogUi
 from widgets.loading_bar import LoadingBar
@@ -31,17 +38,17 @@ GRUB_CONF_LOC='/etc/default/grub'
 file_loc=GRUB_CONF_LOC
 HOME =os.getenv('HOME')
 
-if os.getenv("XDG_CONFIG_HOME") ==None:
+if os.getenv("XDG_CONFIG_HOME") is None:
     CONFIG_LOC=HOME+"/.config/grub-editor"
 else:
     CONFIG_LOC=os.getenv("XDG_CONFIG_HOME")+"/grub-editor"
     
-if os.getenv("XDG_CACHE_HOME") ==None:
+if os.getenv("XDG_CACHE_HOME") is None:
     CACHE_LOC=HOME+"/.cache/grub-editor"
 else:
     CACHE_LOC=os.getenv("XDG_CACHE_HOME")+"/grub-editor"
     
-if os.getenv("XDG_DATA_HOME") ==None:
+if os.getenv("XDG_DATA_HOME") is None:
     DATA_LOC=HOME+"/.local/share/grub-editor"
 else:
     DATA_LOC=os.getenv("XDG_DATA_HOME")+"/grub-editor"
@@ -56,8 +63,8 @@ def printer(*args):
         printer_temp= printer_temp +' '+str(arg)
     
     if sys.platform == 'linux':
-                                                             #number is in bytes
-        if os.stat(f'{DATA_LOC}/logs/main.log').st_size > 5000000:
+
+        if os.stat(f'{DATA_LOC}/logs/main.log').st_size > 5000000:#number is in bytes
             
             #only keep last half of the file
             with open(f'{DATA_LOC}/logs/main.log','r') as f:
@@ -79,7 +86,6 @@ write_file='/opt/grub_fake.txt'
 write_file=file_loc
 
 PATH = os.path.dirname(os.path.realpath(__file__))
-to_write_data=None
 
 #create the necessary files and folders
 subprocess.Popen([f'mkdir -p {DATA_LOC}/snapshots'],shell=True)
@@ -89,17 +95,21 @@ subprocess.Popen([f'touch {DATA_LOC}/logs/main.log'],shell=True)
 
 #catch the error that occures when this file isnt created yet
 try:
-    logging.basicConfig(filename=f'{DATA_LOC}/logs/main.log',format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.basicConfig(filename=f'{DATA_LOC}/logs/main.log',
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    
 except FileNotFoundError:
+    
     subprocess.run([f'mkdir -p {DATA_LOC}/logs'],shell=True)
     subprocess.run([f'touch {DATA_LOC}/logs/main.log'],shell=True)
-    logging.basicConfig(filename=f'{DATA_LOC}/logs/main.log',format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.basicConfig(filename=f'{DATA_LOC}/logs/main.log',
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
 
 # def check_dual_boot():
 #    out = subprocess.check_output(['pkexec os-prober'],shell=True).decode()
 
-def remove_quotes(value):
+def remove_quotes(value:str)->str:
     """ Removes double quotes or single quotes from the begining and the end
         Only if the exist in both places
     """
@@ -113,8 +123,10 @@ def remove_quotes(value):
 def get_value(name,issues,read_file=None):
     """arguments are  the string to look for 
     and the list to append issues to
-    Note: It does some minor edits to the value read from the file before returning it if name==GRUB_DEFAULT
-    1.if the value is not saved then check for double quotes, if it has double quotes then it will be removed if not then (Missing ") will be added
+    Note: It does some minor edits to the value read from the file before 
+    returning it if name==GRUB_DEFAULT
+    1.if the value is not saved then check for double quotes, if it has 
+        double quotes then it will be removed if not then (Missing ") will be added
     2.replace " >" with ">" to make sure it is found as invalid
     
     """
@@ -135,7 +147,7 @@ def get_value(name,issues,read_file=None):
         found_commented=False
         
         val= None
-        for ind ,line in enumerate(lines):
+        for line in lines:
             sline=line.strip()
             if  sline.find(f"#{name}")==0:
                 found_commented=True
@@ -146,21 +158,10 @@ def get_value(name,issues,read_file=None):
             elif sline.find(name)==0:
                 start_index= line.find(name)+len(name)
                 
-                #find the index of the last chracter in the value
-                for i in reversed(range(len(line))):
-                    if line[i]!=" " :
-                        end_index=i
-                        break
+                val=sline[start_index:]
                 
-                #to make sure IndexError doesnt occur because no trailing spaces are there
-                # print(start_index,end_index,'target')
-                if i!=0:
-                    val=line[start_index:end_index+1]
-                else:
-                    val=line[start_index:]
-
         #remove the double quotes in the end and the begining
-        if name=="GRUB_DEFAULT=" and val!=None:
+        if name=="GRUB_DEFAULT=" and val is not None:
             if val.find(">")>0 and val.find(" >")==-1:
                 val =val.replace(">"," >")
             elif val.find(" >")>0:
@@ -175,12 +176,12 @@ def get_value(name,issues,read_file=None):
                 
         
             
-        if val==None:
+        if val is None:
             if found_commented and comment_issue_string not in issues:
                 issues.append(comment_issue_string)
             else:
                 issues.append(f"{name} was not found in {read_file}")
-        if name=="GRUB_DISABLE_OS_PROBER=" and val==None:
+        if name=="GRUB_DISABLE_OS_PROBER=" and val is None:
             val="true"
         return val
 
@@ -206,8 +207,6 @@ def set_value(name,val,target_file=f'{CACHE_LOC}/temp.txt'):
         if " >" in val:
             val= val.replace(" >",">")
     
-    # found the name that is being looked for in  a commented line
-    found_commented=False
     
     with open(target_file) as f:
         data=f.read()
@@ -216,9 +215,10 @@ def set_value(name,val,target_file=f'{CACHE_LOC}/temp.txt'):
     old_val=None
     for ind ,line in enumerate(lines):
         sline=line.strip()
+        
+        #no need to read the line if it starts with #
         if sline.find("#")==0:
             continue
-        
         
         elif sline.find(name)==0:
             start_index= line.find(name)+len(name)
@@ -235,7 +235,8 @@ def set_value(name,val,target_file=f'{CACHE_LOC}/temp.txt'):
     for line in lines:
         to_write_data+=line+"\n"
     
-    if old_val==None:
+    #if line wasn't found
+    if old_val is None:
         to_write_data+=name+val
         
     with open(target_file,'w') as file:
@@ -257,8 +258,9 @@ preferences={"view_default":["on_the_application_itself","default_text_editor","
              }
 
 def init_pref_file():
+    """ Creates the preference file"""
     with open(f'{CONFIG_LOC}/main.json','w') as file :
-        file.write("")
+        file.write(json.dumps({}))
         
 def get_preference(key):
     # print('get pref  was called')
@@ -279,12 +281,11 @@ def get_preference(key):
             # print(data,"data of the json file")
             if data !="":
                 pref_dict =json.loads(data)
-        except Exception as e:
+        except json.decoder.JSONDecodeError as e:
             printer(e)
             printer(traceback.format_exc())
             printer('This exception was handled with ease 😎')
             init_pref_file()
-            set_preference
                 
             
     #reopen the file and then read it
@@ -417,8 +418,8 @@ class Ui(QtWidgets.QMainWindow):
         self.VLayout_snapshot_parent.addStretch()
         
         #load the entries for available operating systems
-        import libs.find_entries as find_entries
-        self.main_entries = find_entries.main_entries
+        
+        self.main_entries = find_entries()
 
         #add all the available operating systems to comboBox_grub_default and self.all_entries
         self.all_entries =[]
@@ -455,14 +456,14 @@ class Ui(QtWidgets.QMainWindow):
             self.issuesUi.show()
             self.setEnabled(False)
             
-            def quit():
+            def quit_():
                 sys.exit()
                 
             def open_file():
                 subprocess.run(["xdg-open /etc/default/grub"],shell=True)
                 sys.exit()
                 
-            self.issuesUi.btn_quit.clicked.connect(quit)
+            self.issuesUi.btn_quit.clicked.connect(quit_)
             self.issuesUi.btn_open_file.clicked.connect(open_file)
         self.ledit_grub_timeout.textChanged.connect(self.ledit_grub_timeout_callback)
         self.predefined.toggled.connect(self.radiobutton_toggle_callback)
@@ -520,11 +521,7 @@ class Ui(QtWidgets.QMainWindow):
 
         self.comboBox_configurations.setCurrentIndex(0)
         
-        #todo remove the following lines after some testing
-        if self.comboBox_configurations.signalsBlocked():
-            raise ValueError("btn_reset_callback signals of comboBoxconfigurations are blocked")
-        #todo check if this line is necessary
-        # self.comboBox_configurations.blockSignals(False)
+        
 
 
     def checkBox_show_menu_on_toggle(self):
@@ -625,6 +622,7 @@ class Ui(QtWidgets.QMainWindow):
                 if file_loc ==GRUB_CONF_LOC:
                     initialize_temp_file(file_loc)
                     set_value("GRUB_DEFAULT=",crct_value)
+                    #TODO BUG when the file is a snapshot changes are made to /etc/default/grub which is unnecessary
                     self.saveConfs()
                 else:
                     set_value('GRUB_DEFAULT=',crct_value,target_file=file_loc)
@@ -691,13 +689,13 @@ class Ui(QtWidgets.QMainWindow):
                         
                         #if the invalid contains fallback then the non invalid should also contain initramfs
                         #todo find out why this returns unexpected value
-                        # condition =   ('fallback initramfs)' in value ) ^ ('fallback intramfs)' in invalid_value )
+                        condition =  not ( ('fallback initramfs)' in value ) ^ ('fallback intramfs)' in invalid_value ) )
                         
                         #to avoid some unexpected behavior by python
-                        first =('fallback initramfs)' in value )
-                        second = ('fallback initramfs)' in invalid_value )
+                        # first =('fallback initramfs)' in value )
+                        # second = ('fallback initramfs)' in invalid_value )
                         
-                        condition = not (first ^ second)
+                        # condition = not (first ^ second)
                         
                         if condition and (value != invalid_value):
                             # print('the right one ',invalid_value,value)
@@ -735,7 +733,7 @@ color:black;
         if not current_is_invalid:
             self.comboBox_grub_default.setStyleSheet("")
     
-    def get_g_default_from_number(self,g_default):
+    def get_g_default_from_number(self,g_default:str):
         ''' Argument could be in 1 >2 format or just plain number like 0 '''
         sub_ptrn=r"\d >\d"
         match = re.search(sub_ptrn,g_default)
@@ -794,7 +792,7 @@ color:black;
                 self.comboBox_grub_default.setCurrentIndex(self.all_entries.index(grub_default_val))    
                 
             except ValueError:
-                #add the invalid entry to the combo box
+                #not really invalid as it could be a number
                 invalid_value=get_value('GRUB_DEFAULT=',self.issues)
                 
                 from_number =self.get_g_default_from_number(invalid_value)
@@ -1044,8 +1042,10 @@ color:black;
                     try:
                         self.vBar.setValue(self.vBar.maximum())
                     except AttributeError:
-                        pass
                         #because vBar is not initialized yet
+                        pass
+                        
+
                     
                     if not authentication_complete:
                         self.lbl_status.setText('Saving configurations')
@@ -1061,7 +1061,7 @@ color:black;
                         #this handles the case where lbl_details_text gets deleted after once its been created
                         try:
                             self.lbl_details.setText(self.lbl_details_text)
-                        except:
+                        except RuntimeError:
                             pass
                 break
 
@@ -1234,6 +1234,7 @@ color:black;
             
                 
             for i in range(self.verticalLayout_2.count()):
+                print(i,self.verticalLayout_2.count())
                 if 'QScrollArea' in str(self.verticalLayout_2.itemAt(i).widget()):
                     self.verticalLayout_2.itemAt(i).widget().deleteLater()
                     break
