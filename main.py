@@ -37,7 +37,7 @@ from widgets.loading_bar import LoadingBar
 GRUB_CONF_LOC='/etc/default/grub'
 file_loc=GRUB_CONF_LOC
 HOME =os.getenv('HOME')
-
+DEBUG=True
 if os.getenv("XDG_CONFIG_HOME") is None:
     CONFIG_LOC=HOME+"/.config/grub-editor"
 else:
@@ -937,11 +937,12 @@ color:black;
         """receives the string in lbl_details_text and sets it as the label for lbl_details"""
         try:
             self.lbl_details.setText(self.lbl_details_text)
-        except:
+        except RuntimeError:
             #this could fail because of two reasons 
             #1.lbl_details hasnt yet been created
             #2.it was deleted
             pass
+            #todo handle the other error case
         
     def saveConfsToCache(self):
         """ saves the configurations that are in GUI to cache ~/.grub-editor/temp.txt  """
@@ -1045,7 +1046,9 @@ color:black;
                         #because vBar is not initialized yet
                         pass
                         
-
+                    except RuntimeError:
+                        #because vBar is deleted
+                        pass
                     
                     if not authentication_complete:
                         self.lbl_status.setText('Saving configurations')
@@ -1075,9 +1078,17 @@ color:black;
         except Exception as e:
             printer(e)
             printer('error trying to save the configurations')
+            print("----------------------------")
             printer(traceback.format_exc())
             self.lbl_status.setText('An error occured when saving')
             self.lbl_status.setStyleSheet('color: red')
+            print(DEBUG,"DEBUG value")
+            if DEBUG:
+                print("raising exception inside the function")
+                # pytest.fail("Caught error in set_conf_and_update_lbl_details")
+                raise e
+            else:
+                print(DEBUG,"DEBUG")
             
     def onSaveConfsFinish(self):
         self.setUiElements(show_issues=False)
@@ -1234,9 +1245,11 @@ color:black;
             
                 
             for i in range(self.verticalLayout_2.count()):
-                print(i,self.verticalLayout_2.count())
+                
                 if 'QScrollArea' in str(self.verticalLayout_2.itemAt(i).widget()):
-                    self.verticalLayout_2.itemAt(i).widget().deleteLater()
+                    target_wid=self.verticalLayout_2.itemAt(i).widget()
+                    target_wid.setParent(None)
+                    target_wid.deleteLater()
                     break
 
                 
@@ -1409,22 +1422,33 @@ color:black;
             printer(str(e))
             printer('Error occured in btn_set_snapshot')
 
+    
 
     def startWorker(self,toCall,onFinish=None,onResult=None,*args):
-        try:
-            """ arguments are funtion to run , funtion to call when finishes ,function to call with result if no errors occured, 
+        """ arguments are funtion to run , funtion to call when finishes ,function to call with result if no errors occured, 
             arugments of the first funtion 
             return the worker object for testing needs"""
+            
+        def handleWorkerException(exception:Exception):
+            if DEBUG:
+                raise exception
+            
+        try:
+            
             worker = Worker(toCall,*args)
             if onFinish is not None:
                 worker.signals.finished.connect(onFinish)
                 # print("connected onFInish",onFinish==self.setUiElements)
             if onResult is not None:
                 worker.signals.result.connect(onResult)
+            worker.signals.exception.connect(handleWorkerException)
             self.threadpool.start(worker)
             
             return worker
         except Exception as e:
+            if DEBUG:
+                print("raising exception")
+                raise e
             printer(traceback.format_exc())
             printer(str(e))
         
@@ -1469,21 +1493,21 @@ color:black;
                         #this handles the case where lbl_details_text gets deleted after once its been created
                         try:
                             self.lbl_details.setText(self.lbl_details_text)
-                        except:
+                        except RuntimeError:
                             pass
                 break
 
-                if self.lbl_details is not None:
-                    for line in process.stdout:
-                        sys.stdout.write(line.decode())
-                        try:
-                            last = self.lbl_details.text()
-                            printer('last is ',last)
-                            self.lbl_details.setText(last+line.decode())
-                        except:
-                            printer('looks like label was deleted')
+                # if self.lbl_details is not None:
+                #     for line in process.stdout:
+                #         sys.stdout.write(line.decode())
+                #         try:
+                #             last = self.lbl_details.text()
+                #             printer('last is ',last)
+                #             self.lbl_details.setText(last+line.decode())
+                #         except:
+                #             printer('looks like label was deleted')
                         
-                    break
+                #     break
             if 'done' in self.lbl_details_text:
                 self.lbl_status.setText('Saved successfully')
             else:
