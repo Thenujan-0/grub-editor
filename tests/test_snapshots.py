@@ -23,7 +23,6 @@ def test_change_config_modified(qtbot):
     curr_ind = mw.comboBox_grub_default.currentIndex()
     for i in  range(len(mw.all_entries)):
         if i!= curr_ind:
-            pass
             grub_default_ind = i
             break
     # todo here
@@ -250,7 +249,7 @@ def test_btn_view(qtbot):
     assert btn_view.text()=='view'
     
     #delete the preferences file
-    subprocess.run([f"rm {main.CONFIG_LOC}/preferences/main.json"],shell=True)
+    subprocess.run([f"rm {main.CONFIG_LOC}/main.json"],shell=True)
     
     qtbot.mouseClick(btn_view, QtCore.Qt.LeftButton)
     

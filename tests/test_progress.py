@@ -3,6 +3,8 @@ import os
 import sys
 from time import sleep
 from PyQt5 import QtWidgets,QtCore
+from tools import *
+
 PATH = os.path.dirname(os.path.realpath(__file__))
 
 #root directory path
@@ -18,7 +20,7 @@ def test_btn_show_details(qtbot):
     
     #click btn show details and check if scroll area is shown
     qtbot.mouseClick(mw.btn_show_details, QtCore.Qt.LeftButton)
-    assert 'QScrollArea' in mw.verticalLayout.itemAt(3).widget().__str__()
+    assert scrollArea_visible(mw,mw.verticalLayout)
 
     #check if btn show details is now named to hide details
     assert mw.verticalLayout.itemAt(2).widget().text()=='Hide details'
@@ -50,7 +52,7 @@ def test_btn_show_details(qtbot):
     qtbot.mouseClick(mw.btn_show_details,QtCore.Qt.LeftButton)
     
     #check if QScrollArea has been created in 3rd index
-    assert 'QScrollArea' in mw.verticalLayout.itemAt(3).widget().__str__()
+    assert scrollArea_visible(mw,mw.verticalLayout)
     
     line1="just pretend this is the first line of something important"
     
