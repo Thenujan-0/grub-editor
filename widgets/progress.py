@@ -1,6 +1,8 @@
-from PyQt5 import QtWidgets,QtCore,QtGui,uic
 import sys
 import os
+
+from PyQt5 import QtWidgets,QtCore
+
 
 PATH= os.path.dirname(os.path.realpath(__file__))
 
@@ -120,12 +122,12 @@ class ProgressUi(QtWidgets.QMainWindow):
             
             
 if __name__=="__main__":
-    global app
-    app = QtWidgets.QApplication([])
+    global APP
+    APP = QtWidgets.QApplication([])
     
     window = ProgressUi()
     window.show()
-    app.exec_()
+    APP.exec_()
     
 
 
