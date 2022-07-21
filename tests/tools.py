@@ -6,7 +6,6 @@ from random import randint
 import os
 import sys
 
-import configupdater
 from pathlib import Path
 
 
@@ -14,9 +13,6 @@ from pathlib import Path
 PATH=os.path.dirname(os.path.realpath(__file__))
 PARENT_PATH=str(Path(PATH).parent)
 
-updater = configupdater.ConfigUpdater()
-updater.read(PARENT_PATH+'/config.ini')
-dUpdates=updater["DEFAULT"]
 
 
 sys.path.append(PARENT_PATH)
@@ -146,3 +142,7 @@ def scrollArea_visible(mw,targetLayout=None)->bool:
     
 def password_not_entered(mw):
     return mw.lbl_status.text() =="Waiting for authentication"
+
+def delete_pref():
+    """ Deletes the user preference file """
+    subprocess.run([f"rm {main.CONFIG_LOC}/main.json"],shell=True)
