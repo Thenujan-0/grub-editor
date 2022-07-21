@@ -77,7 +77,7 @@ def main():
     window.show()
     app.setWindowIcon(QtGui.QIcon(f'/usr/share/pixmaps/grub-editor.png'))
     
-    app.exec_()
+    sys.exit(app.exec_())
     
     
 if __name__ =="__main__":
