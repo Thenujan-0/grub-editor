@@ -683,7 +683,6 @@ class Ui(QtWidgets.QMainWindow):
                 if file_loc ==GRUB_CONF_LOC:
                     initialize_temp_file(file_loc)
                     set_value("GRUB_DEFAULT=",crct_value)
-                    #TODO BUG when the file is a snapshot changes are made to /etc/default/grub which is unnecessary
                     self.saveConfs()
                 else:
                     set_value('GRUB_DEFAULT=',crct_value,target_file=file_loc)
@@ -749,7 +748,6 @@ class Ui(QtWidgets.QMainWindow):
                     if krnl_major_vrsn2 == krnl_major_vrsn:
                         
                         #if the invalid contains fallback then the non invalid should also contain initramfs
-                        #todo find out why this returns unexpected value
                         condition =  not ( ('fallback initramfs)' in value ) ^ ('fallback intramfs)' in invalid_value ) )
                         
                         #to avoid some unexpected behavior by python
@@ -1184,8 +1182,8 @@ color:black;
         if (value=="true" and not cbox.isChecked() or value=="false" and cbox.isChecked()) \
             and cbox in self.original_modifiers:
             
+            self.original_modifiers.remove(cbox)
             
-                self.original_modifiers.remove(cbox)
         # check if cbox is showing false value 
         elif ( (value=="true" and  cbox.isChecked()) or (value=="false" and not cbox.isChecked()) ) \
             and cbox not in self.original_modifiers:
@@ -1587,9 +1585,9 @@ color:black;
             
     def btn_delete_callback_creator(self,arg):
         def func():
-            string =f'rm {DATA_LOC}/snapshots/{arg}'
+            cmd =f'rm \'{DATA_LOC}/snapshots/{arg}\''
             # printer(string)
-            subprocess.Popen([f'rm \'{DATA_LOC}/snapshots/{arg}\''],shell=True)
+            subprocess.Popen([cmd],shell=True)
             global file_loc
             if file_loc == f'{DATA_LOC}/snapshots/{arg}':
                 file_loc=GRUB_CONF_LOC
@@ -1642,8 +1640,9 @@ color:black;
     
 
     def comboBox_grub_default_on_current_index_change(self,value):
+        """ current index changed callback """
+        
         try:
-            """ current index changed callback """
             # printer('combo box currentIndexChanged')
             self.set_comboBox_grub_default_style()
             
@@ -1672,35 +1671,28 @@ color:black;
         
         
     def radiobutton_toggle_callback(self):
-        try:
-            btn= self.sender()
-            grub_default_val =get_value('GRUB_DEFAULT=',self.issues)
+        btn= self.sender()
+        
+        if btn.text()=='predefined:':
+            # printer('yes')
+            default_entry =get_value('GRUB_DEFAULT=',self.issues)
+            # printer('grub_default')
+            if (default_entry !='saved' and default_entry !=None) and btn.isChecked():
+                if btn  in self.original_modifiers:
+                    self.original_modifiers.remove(btn)  
+                # printer('1st')  
+            elif (default_entry =='saved' or default_entry ==None) and not btn.isChecked():
+                if btn in self.original_modifiers:
+                    self.original_modifiers.remove(btn)
+                # printer('2nd')
+            else:
+                # printer('last')
+                if btn not in self.original_modifiers:
+                    self.original_modifiers.append(btn)
+        else:
+            raise Exception("Unexpected  radiobutton callback")
+        self.handle_modify()
 
-                
-            
-            # printer(btn.text(),'btn.text() radiobutton_toggle_callback')
-            if btn.text()=='predefined:':
-                # printer('yes')
-                default_entry =get_value('GRUB_DEFAULT=',self.issues)
-                # printer('grub_default')
-                if (default_entry !='saved' and default_entry !=None) and btn.isChecked():
-                    if btn  in self.original_modifiers:
-                        self.original_modifiers.remove(btn)  
-                    # printer('1st')  
-                elif (default_entry =='saved' or default_entry ==None) and not btn.isChecked():
-                    if btn in self.original_modifiers:
-                        self.original_modifiers.remove(btn)
-                    # printer('2nd')
-                else:
-                    # printer('last')
-                    if btn not in self.original_modifiers:
-                        self.original_modifiers.append(btn)
-            # printer(self.original_modifiers)
-            self.handle_modify()
-
-        except Exception as e:
-            printer(traceback.format_exc())
-            printer(str(e))
 
     def handle_modify(self):
         # print(self.original_modifiers)
@@ -1891,8 +1883,7 @@ class SetRecommendations(QtWidgets.QMainWindow):
         
         
         
-        for i in range(len(recommendations_list)):
-            recommendation =recommendations_list[i]
+        for i,recommendation in recommendations_list:
             self.horizontalLayout = QtWidgets.QHBoxLayout()
             self.horizontalLayout.setObjectName("horizontalLayout")
             self.label = QtWidgets.QLabel(self.scrollAreaWidgetContents)
@@ -1943,18 +1934,12 @@ class SetRecommendations(QtWidgets.QMainWindow):
 
         return btn_fix_callback
 
-    def btn_ignore_callback_creator(self,HLayout):
-        def btn_ignore_callback(self):
-            clear_layout(HLayout)
-        return btn_ignore_callback
-
-
 
 def main():
     
     global app
     app =QtWidgets.QApplication(sys.argv)
-    app.setWindowIcon(QtGui.QIcon(f'/usr/share/pixmaps/grub-editor.png'))
+    app.setWindowIcon(QtGui.QIcon('/usr/share/pixmaps/grub-editor.png'))
     global MainWindow
     MainWindow=Ui()
     sys.exit(app.exec_())
