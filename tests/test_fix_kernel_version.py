@@ -1,10 +1,11 @@
 import os
 import sys
-import re;
+import re
 import subprocess
+from time import sleep
 from pathlib import Path
-from PyQt5 import QtWidgets,QtCore
-from tools import change_comboBox_current_index
+from PyQt5 import QtWidgets,QtCore,QtTest
+from tools import change_comboBox_current_index,delete_pref
 
 
 PATH = os.path.dirname(os.path.realpath(__file__))
@@ -12,7 +13,7 @@ PATH = os.path.dirname(os.path.realpath(__file__))
 PATH = Path(PATH).parent
 sys.path.append(PATH)
 
-import main;
+import main
 
 HOME=os.getenv("HOME")
 
@@ -40,7 +41,7 @@ def change_krnl_minor_vrsn(val)->str:
 
 def test_fix_kernel_version_conf(qtbot):
     mw=main.Ui()
-    main.MainWindow=mw;
+    main.MainWindow=mw
     if len(mw.invalid_entries)==0:
         for val in mw.all_entries:
             if " >" not in val:
@@ -53,13 +54,15 @@ def test_fix_kernel_version_conf(qtbot):
         mw.close()
         main.initialize_temp_file()
         main.set_value("GRUB_DEFAULT=",new_val)
-        subprocess.run([f"pkexec cp {HOME}/.cache/grub-editor/temp.txt /etc/default/grub"],shell=True)
+        subprocess.run([f"pkexec cp {HOME}/.cache/grub-editor/temp.txt /etc/default/grub"]
+                       ,shell=True)
         mw = main.Ui()
-        main.MainWindow=mw;
+        main.MainWindow=mw
         
     assert mw.dialog_invalid_default_entry.isVisible()
     
-    #First press the cancel button check if window closes and no changes were made to the snapshot/file
+    #First press the cancel button check if window closes and 
+    # no changes were made to the snapshot/file
     print(main.file_loc)
     old_sum = subprocess.check_output([f"sha256sum {main.file_loc}"],shell=True).decode()
     
@@ -88,7 +91,7 @@ def test_fix_kernel_version_conf(qtbot):
         pass
     new_default_val = main.get_value("GRUB_DEFAULT=",issues)
     
-    assert issues ==[]
+    assert not issues
     assert new_default_val in mw.all_entries 
     assert new_default_val not in mw.invalid_entries
     
@@ -99,7 +102,7 @@ def test_fix_kernel_version_conf(qtbot):
     
 def test_fix_kernel_version_snapshot(qtbot):
     mw=main.Ui()
-    main.MainWindow=mw;
+    main.MainWindow=mw
     
     if len(mw.invalid_entries)!=0:
         mw.dialog_invalid_default_entry.close()
@@ -123,7 +126,7 @@ def test_fix_kernel_version_snapshot(qtbot):
     print(main.file_loc)
     subprocess.run([f"cp {HOME}/.cache/grub-editor/temp.txt {main.file_loc}"],shell=True)
     mw = main.Ui()
-    main.MainWindow=mw;
+    main.MainWindow=mw
     mw.comboBox_configurations.setCurrentIndex(ind)
         
     assert mw.dialog_invalid_default_entry.isVisible()
@@ -157,6 +160,75 @@ def test_fix_kernel_version_snapshot(qtbot):
     
     new_default_val = main.get_value("GRUB_DEFAULT=",issues)
     
-    assert issues ==[]
+    assert not issues
     assert new_default_val in mw.all_entries 
     assert new_default_val not in mw.invalid_entries
+    
+    
+def test_do_this_everytime(qtbot):
+    
+    
+    
+    mw = main.Ui()
+    main.MainWindow=mw
+        
+    ind=2
+    target_snapshot=mw.lines[ind]
+    target_snap_path=f'{main.DATA_LOC}/snapshots/{target_snapshot}'
+    for val in mw.all_entries:
+        if " >" not in val:
+            continue
+        
+        new_val=change_krnl_minor_vrsn(val)
+        break
+    print("changing the current entry to invalid")
+    mw.close()
+    main.initialize_temp_file()
+    main.set_value("GRUB_DEFAULT=",new_val)
+    subprocess.run([f"cp {HOME}/.cache/grub-editor/temp.txt {target_snap_path}"],shell=True)
+    mw = main.Ui()
+    main.MainWindow=mw
+    delete_pref()
+    if len(mw.invalid_entries)!=0:
+        mw.dialog_invalid_default_entry.close()
+        
+    pref=main.get_preference("invalid_kernel_version")
+    assert pref is None
+    mw.comboBox_configurations.setCurrentIndex(ind)
+        
+    assert mw.dialog_invalid_default_entry.isVisible()
+    
+    dialog =mw.dialog_invalid_default_entry
+    QtTest.QTest.qWait(1000)
+    print('done 1')
+    pref=main.get_preference("invalid_kernel_version")
+    assert pref is None
+    
+    if not dialog.checkBox.isChecked():
+        mw.dialog_invalid_default_entry.checkBox.click()
+    
+    pref=main.get_preference("invalid_kernel_version")
+    assert pref is None
+        
+    qtbot.mouseClick(dialog.btn_cancel, QtCore.Qt.LeftButton)
+    
+    # QtTest.QTest.qWait(10000)
+    pref=main.get_preference("invalid_kernel_version")
+    assert pref == "cancel"
+    
+    assert not dialog.isVisible()
+    
+    #to reshow the dialog
+    mw.setUiElements()
+    
+    #close the dialog if it popped up for /etc/default/grub entry
+    if len(mw.invalid_entries)>0:
+        mw.dialog_invalid_default_entry.close()
+    
+    mw.comboBox_configurations.setCurrentIndex(ind)
+    
+    dialog=mw.dialog_invalid_default_entry
+    assert not dialog.isVisible()
+    
+    
+    
