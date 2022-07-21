@@ -28,7 +28,7 @@ from PyQt5.QtWidgets import QDesktopWidget
 
 from libs.qt_functools import insert_into, reconnect
 from libs.worker import Worker
-from libs.find_entries import find_entries
+from libs.find_entries import GrubConfigNotFound, find_entries
 
 from widgets.dialog import DialogUi
 from widgets.error_dialog import ErrorDialogUi
@@ -119,7 +119,10 @@ def remove_quotes(value:str)->str:
         value=value[1:-1]
     
     return value
-            
+
+available_conf_keys=["GRUB_DEFAULT=","GRUB_DISABLE_OS_PROBER=",
+                    "GRUB_TIMEOUT_STYLE=","GRUB_TIMEOUT=","GRUB_CMDLINE_LINUX="]
+
 def get_value(name,issues,read_file=None):
     """arguments are  the string to look for 
     and the list to append issues to
@@ -130,6 +133,9 @@ def get_value(name,issues,read_file=None):
     2.replace " >" with ">" to make sure it is found as invalid
     
     """
+    
+    if name not in available_conf_keys:
+        raise ValueError("name not in available_conf_keys")
     
     if read_file is None:
         read_file=file_loc
@@ -200,6 +206,9 @@ def set_value(name,val,target_file=f'{CACHE_LOC}/temp.txt'):
 
     if name[-1] != '=':
         raise ValueError("name passed for set_value doesn't contain = as last character")
+    
+    if name not in available_conf_keys:
+        raise ValueError("name not in available_conf_keys")
     
     if name =="GRUB_DEFAULT=" and val!="saved":
         if val[0]!='"' and val[-1]!='"':
@@ -418,8 +427,58 @@ class Ui(QtWidgets.QMainWindow):
         self.VLayout_snapshot_parent.addStretch()
         
         #load the entries for available operating systems
+        try:
+            self.main_entries = find_entries()
+        except GrubConfigNotFound:
+            self.dialog_grub_cfg_not_found=DialogUi(False)
+            dialog =self.dialog_grub_cfg_not_found
+            dialog.setText("Grub config was not found at /boot/grub/grub.cfg."+
+                "Please make sure grub is installed in this operating system."+
+                " If grub is installed in another linux operating system then "+
+                "grub.cfg would not be present in this operating system"+
+                " and you will not be able to use grub editor from this operating system")
+            dialog.removeCheckBox()
+            dialog.show_dialog()
+            dialog.exitOnAny()
+            self.setEnabled(False)
+            return
         
-        self.main_entries = find_entries()
+        except PermissionError:
+            
+            def change_permission():
+                subprocess.run(["pkexec chmod 666 /boot/grub/grub.cfg"],shell=True)
+            
+            def btn_ok_callback():
+                worker=self.startWorker(change_permission)
+                worker.signals.finished.connect(on_finish)
+            
+            def on_finish():
+                QtCore.QCoreApplication.quit()
+                status = QtCore.QProcess.startDetached(sys.executable, sys.argv)
+                print(status)
+            
+            self.dialog_cfg_permission=DialogUi(True)
+            dialog=self.dialog_cfg_permission
+            dialog.setText("Permission error occured while trying to read /boot/grub/grub.cfg. "+
+                           "Please make sure /boot/grub/grub.cfg is readable by the current user."+
+                           "Grub Editor can change the file permission for you if you want")
+            dialog.show_dialog()
+            dialog.btn_ok.clicked.connect(btn_ok_callback)
+            dialog.setBtnOkText("Change permission")
+            dialog.removeCheckBox()
+            dialog.exitOnCancel()
+            dialog.exitOnClose()
+            self.setEnabled(False)
+            return
+        
+        # except Exception as e:
+        #     self.error_dialog=ErrorDialogUi()
+        #     self.error_dialog.set_error_title(str(e))
+        #     self.error_dialog.set_error_body(traceback.format_exc())
+        #     self.error_dialog.exitOnAny()
+        #     self.error_dialog.show()
+        #     self.setEnabled(False)
+        #     return
 
         #add all the available operating systems to comboBox_grub_default and self.all_entries
         self.all_entries =[]
@@ -606,6 +665,8 @@ class Ui(QtWidgets.QMainWindow):
             self.dialog_invalid_default_entry=DialogUi(btn_cancel=False)
             self.dialog_invalid_default_entry.label.setText(f"{file_loc} currently has an invalid default entry")
             self.dialog_invalid_default_entry.show()
+            self.dialog_invalid_default_entry.raise_()
+            self.dialog_invalid_default_entry.activateWindow()
             
             
         def set_kernel_version_fixer(crct_value):
@@ -942,7 +1003,8 @@ color:black;
             #1.lbl_details hasnt yet been created
             #2.it was deleted
             pass
-            #todo handle the other error case
+        except AttributeError:
+            pass
         
     def saveConfsToCache(self):
         """ saves the configurations that are in GUI to cache ~/.grub-editor/temp.txt  """
@@ -1352,6 +1414,8 @@ color:black;
                 printer('ERROR: unknown value for view_default on main.json',view_default)
                 
         except Exception as e:
+            if DEBUG:
+                raise e
             printer(str(e))
             printer(traceback.format_exc())
             printer("An error occured in btn_View_callback")
@@ -1404,8 +1468,8 @@ color:black;
                 # printer(default ,'is the value found in snapshot')
                 # printer(self.all_entries)
                 self.dialog_invalid_snapshot=DialogUi(btn_cancel=True)
-                self.dialog_invalid_snapshot.label.setText("The snapshot you have selected has an invalid value for grub default")
-                self.dialog_invalid_snapshot.btn_ok.setText('continue anyway')
+                self.dialog_invalid_snapshot.setText("The snapshot you have selected has an invalid value for grub default")
+                self.dialog_invalid_snapshot.setBtnOkText('continue anyway')
                 self.dialog_invalid_snapshot.show()
                 self.dialog_invalid_snapshot.btn_ok.clicked.connect(set_snapshot)
 

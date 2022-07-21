@@ -1,5 +1,5 @@
-from PyQt5 import QtWidgets ,uic
-from PyQt5.QtWidgets import QDesktopWidget
+from PyQt5 import QtWidgets ,uic,QtGui
+from PyQt5.QtWidgets import QDesktopWidget,QApplication
 import os 
 import sys
 
@@ -11,13 +11,19 @@ PATH = PATH[0:-7]
 sys.path.append(PATH)
 
 class ErrorDialogUi(QtWidgets.QDialog):
-
+    """ Avaiable functions are
+        set_error_title
+        set_error_body
     
+    """
+
+    exitOnclose=False
+
     def __init__(self,):
         super(ErrorDialogUi,self).__init__()
         uic.loadUi(f'{PATH}/ui/error_dialog.ui',self)
         
-        self.btn_ok.clicked.connect(self.btn_ok_callback)
+        self.btn_ok.clicked.connect(self.selfClose)
 
         
         #make sure window is in center of the screen
@@ -26,10 +32,8 @@ class ErrorDialogUi(QtWidgets.QDialog):
         qtRectangle.moveCenter(centerPoint)
         self.move(qtRectangle.topLeft())
 
-    def btn_ok_callback(self):
-        self.close()
 
-    def btn_cancel_callback(self):
+    def selfClose(self):
         self.close()
         
     def set_error_title(self,error_title):
@@ -46,12 +50,33 @@ class ErrorDialogUi(QtWidgets.QDialog):
         
     def set_error_body(self,error_body):
         self.lbl_error_body.setText(error_body)
-
+        
+    def _exitApp(self):
+        QApplication.exit()
+    def exitOnAny(self):
+        self.btn_ok.clicked.connect(self._exitApp)
+        self.exitOnclose=True
+    
+    
+    def closeEvent(self,event):
+        if self.exitOnclose:
+            self._exitApp()
+        else:
+            event.accept()
 
 def main():
     app= QtWidgets.QApplication([])
     window=ErrorDialogUi()
+    
+    try:
+        window.set_error_title(sys.argv[1])
+        window.set_error_body(sys.argv[2])
+        
+    except IndexError:
+        pass
     window.show()
+    app.setWindowIcon(QtGui.QIcon(f'/usr/share/pixmaps/grub-editor.png'))
+    
     app.exec_()
     
     

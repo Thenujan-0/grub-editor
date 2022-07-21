@@ -2,11 +2,14 @@
 
 import traceback
 import subprocess
-
+import os
+GRUB_CONF_NONEDITABLE="/boot/grub/grub.cfg"
 
 class GrubConfigNotFound(Exception):
     """ Raised when /boot/grub/grub.cfg is not found """
-
+    def __init__(self):
+        super(Exception,self).__init__(f"Grub config file was not found at {GRUB_CONF_NONEDITABLE}")
+    
 
 class MainEntry():
     parent=None
@@ -19,13 +22,13 @@ class MainEntry():
     def __repr__(self) -> str:
         to_return="" 
         if len(self.sub_entries)==0:
-            return "MainEntry(title:'"+self.title+"')"
+            return "\nMainEntry(title:'"+self.title+"')"
         
         for sub_entry in self.sub_entries:
             to_return+="\n"+sub_entry.title
 
         
-        to_return="MainEntry(title:'"+self.title+"', sub_entries :["+to_return+"])"
+        to_return="\nMainEntry(title:'"+self.title+"', sub_entries :["+to_return+"])"
             
         return to_return
         
@@ -49,15 +52,20 @@ class MainEntry():
         print('')
         
 def find_entries():
-    cmd_find_entries=["awk -F\\' '$1==\"menuentry \" || $1==\"submenu \" \
-    {print i++ \" : \" $2}; /\\tmenuentry / {print \"\\t\" i-1\">\"j++ \" :\
-        \" $2};' /boot/grub/grub.cfg"]
+    
+    cmd_find_entries=["awk -F\\' '$1==\"menuentry \" || $1==\"submenu \" "+
+"{print i++ \" : \" $2}; /\\tmenuentry / {print \"\\t\" i-1\">\"j++ \" : "+
+"\" $2};' "+GRUB_CONF_NONEDITABLE]
     
     out =subprocess.getoutput(cmd_find_entries)
-    NO_SUCH_FILE_ERR_MSG="awk: fatal: cannot open file `/boot/grub/grub.cfg' for reading: No such file or directory"
+    NO_SUCH_FILE_ERR_MSG=f"awk: fatal: cannot open file `{GRUB_CONF_NONEDITABLE}' for reading: No such file or directory"
+    PERMISSION_ERR_MSG=f"awk: fatal: cannot open file `{GRUB_CONF_NONEDITABLE}' for reading: Permission denied"
 
-    #if NO_SUCH_FILE_ERR_MSG in out:
-    #raise GrubConfigNotFound
+    if NO_SUCH_FILE_ERR_MSG in out:
+        raise GrubConfigNotFound
+    elif PERMISSION_ERR_MSG in out:
+        raise PermissionError(f"Permission denied to read {GRUB_CONF_NONEDITABLE}")
+    
     
     main_entries=[]
     lines =out.splitlines()
