@@ -317,7 +317,6 @@ def get_preference(key):
     return value
 
 def set_preference(key,value):
-    print('set pref  was called')
     valid_key=False
     #to avoid typos in string causing bugs
     for  pref_key ,pref_val  in preferences.items():
@@ -674,7 +673,8 @@ class Ui(QtWidgets.QMainWindow):
             the user pereference file'''
             pref_fix = get_preference("invalid_kernel_version")
             
-            def fix(read_checkbox=True):
+            #*arg  is used so that qt cannot pass arguments to my argument(read_checkbox)
+            def fix(*arg,read_checkbox=True):
                 ''' Fixes the invalid entry '''
                 
                 print('editing the file from',file_loc,'to fix kernel version')
@@ -715,10 +715,10 @@ class Ui(QtWidgets.QMainWindow):
                     self.error_dialog.show()
                 
                 
-                    
-                def cancel(read_checkbox=True):
+                #*arg  is used so that qt cannot pass arguments to my argument(read_checkbox)
+                def cancel(*arg,read_checkbox=True):
                     if read_checkbox and dwin.checkBox.isChecked():
-                        set_value("invalid_kernel_version","cancel")
+                        set_preference("invalid_kernel_version","cancel")
                     dwin.close()
                 dwin.add_btn_cancel()
                 dwin.btn_ok.clicked.connect(fix)
@@ -765,9 +765,9 @@ class Ui(QtWidgets.QMainWindow):
             printer("invalid default entry is not fixable")
             # printer(traceback.format_exc())
             
-        if pref_show==None:
+        if pref_show is None or pref_show=="True":
             create_win()
-            
+
         if crct_value != None:
             set_kernel_version_fixer(crct_value)
         
