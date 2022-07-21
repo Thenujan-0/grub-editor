@@ -32,6 +32,7 @@ class WorkerSignals(QtCore.QObject):
     error = QtCore.pyqtSignal(tuple)
     result = QtCore.pyqtSignal(object)
     output =QtCore.pyqtSignal(str)
+    exception=QtCore.pyqtSignal(object)
     
     started=QtCore.pyqtSignal() 
     
@@ -74,10 +75,11 @@ class Worker(QtCore.QRunnable):
             result = self.fn(
                 *self.args, **self.kwargs
             )
-        except:
+        except Exception as e:
             traceback.print_exc()
             exctype, value = sys.exc_info()[:2]
             self.signals.error.emit((exctype, value, traceback.format_exc()))
+            self.signals.exception.emit(e)
         else:
             self.signals.result.emit(result)  # Return the result of the processing
         finally:
