@@ -7,7 +7,6 @@ import os
 import sys
 
 import configupdater
-import os
 from pathlib import Path
 
 

@@ -75,7 +75,7 @@ def main():
     except IndexError:
         pass
     window.show()
-    app.setWindowIcon(QtGui.QIcon(f'/usr/share/pixmaps/grub-editor.png'))
+    app.setWindowIcon(QtGui.QIcon('/usr/share/pixmaps/grub-editor.png'))
     
     sys.exit(app.exec_())
     

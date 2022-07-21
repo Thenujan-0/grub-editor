@@ -164,7 +164,8 @@ disable=raw-checker-failed,
         unused-wildcard-import,
         wildcard-import,
         missing-function-docstring,
-        missing-class-docstring
+        missing-class-docstring,
+        global-at-module-level
         
 ; disable=all
 
