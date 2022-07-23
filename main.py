@@ -1839,11 +1839,11 @@ color:black;
 
             reconnect(self.btn_create_snapshot.clicked,self.btn_create_snapshot_callback)
             if len(self.lines) >0 and  self.lbl_no_snapshots:
-                self.lbl_no_snapshots.setText('Snapshots are backups of /etc/default/grub .Snapshots can help you when you mess up some configuration in /etc/default/grub . These snapshots are stored inside ~/.grub-editor/snapshots/')
+                self.lbl_no_snapshots.setText(f'Snapshots are backups of /etc/default/grub .Snapshots can help you when you mess up some configuration in /etc/default/grub . These snapshots are stored inside {DATA_LOC}/snapshots/')
                 
             elif len(self.lines) ==0 :
                 printer('lines are zero and label wasnt found soo.. creating that lbl_nosnapshots')
-                self.lbl_no_snapshots.setText('Looks like you dont have any snapshots .Snapshots are backups of /etc/default/grub .Snapshots can help you when you mess up some configuration in /etc/default/grub . These snapshots are stored inside ~/.grub-editor/snapshots/')
+                self.lbl_no_snapshots.setText(f'Looks like you dont have any snapshots .Snapshots are backups of /etc/default/grub .Snapshots can help you when you mess up some configuration in /etc/default/grub . These snapshots are stored inside {DATA_LOC}/snapshots')
                 self.lbl_no_snapshots.setWordWrap(True)
             else:
                 printer('unexpected condition in line 895 when loking for lbl_no_snapshots')
