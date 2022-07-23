@@ -146,3 +146,8 @@ def password_not_entered(mw):
 def delete_pref():
     """ Deletes the user preference file """
     subprocess.run([f"rm {main.CONFIG_LOC}/main.json"],shell=True)
+    
+def get_file_sum(file_path):
+    """ Returns the sum of the file provided as argument """
+    return subprocess.check_output([f"sha256sum {file_path}"],shell=True).decode()
+    

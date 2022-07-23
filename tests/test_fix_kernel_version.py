@@ -173,7 +173,8 @@ def test_do_this_everytime(qtbot):
     main.MainWindow=mw
         
     ind=2
-    target_snapshot=mw.lines[ind]
+    # -1 because lines has the list of snapshots but the configurations has /etc/default/grub
+    target_snapshot=mw.lines[ind-1]
     target_snap_path=f'{main.DATA_LOC}/snapshots/{target_snapshot}'
     for val in mw.all_entries:
         if " >" not in val:
@@ -181,11 +182,9 @@ def test_do_this_everytime(qtbot):
         
         new_val=change_krnl_minor_vrsn(val)
         break
-    print("changing the current entry to invalid")
+    print("changing the current entry to invalid",new_val,target_snap_path)
     mw.close()
-    main.initialize_temp_file()
-    main.set_value("GRUB_DEFAULT=",new_val)
-    subprocess.run([f"cp {HOME}/.cache/grub-editor/temp.txt {target_snap_path}"],shell=True)
+    main.set_value("GRUB_DEFAULT=",new_val,target_snap_path)
     mw = main.Ui()
     main.MainWindow=mw
     delete_pref()

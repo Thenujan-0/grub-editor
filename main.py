@@ -121,7 +121,7 @@ def remove_quotes(value:str)->str:
     return value
 
 available_conf_keys=["GRUB_DEFAULT=","GRUB_DISABLE_OS_PROBER=",
-                    "GRUB_TIMEOUT_STYLE=","GRUB_TIMEOUT=","GRUB_CMDLINE_LINUX="]
+                    "GRUB_TIMEOUT_STYLE=","GRUB_TIMEOUT=","GRUB_CMDLINE_LINUX=","GRUB_RECORDFAIL_TIMEOUT="]
 
 def get_value(name,issues,read_file=None):
     """arguments are  the string to look for 
@@ -191,12 +191,40 @@ def get_value(name,issues,read_file=None):
             val="true"
         return val
 
+def remove_value(name,target_file=f"{CACHE_LOC}/temp.txt"):
+    """ Removes the value from the value """
+    if name[-1] != '=':
+        raise ValueError("name passed for set_value doesn't contain = as last character")
+    
+    if name not in available_conf_keys:
+        raise ValueError("name not in available_conf_keys")
 
-
-
+    with open(target_file) as f:
+        data=f.read()
+        
+    lines=data.splitlines()
+    
+    for ind ,line in enumerate(lines):
+        sline=line.strip()
+        
+        #no need to read the line if it starts with #
+        if sline.find("#")==0:
+            continue
+        
+        elif sline.find(name)==0:
+            lines[ind]=""
+    
+    to_write_data=""
+    
+    for line in lines:
+        to_write_data+=line+"\n" 
+    
+    with open(target_file,'w') as file:
+        file.write(to_write_data)   
+        
 
 def set_value(name,val,target_file=f'{CACHE_LOC}/temp.txt'):
-    """ writes the changes to ~/.cache/grub-editor/temp.txt. call initialize_temp_file before start writing to temp.txt
+    """ writes the changes to target_file(default:~/.cache/grub-editor/temp.txt). call initialize_temp_file before start writing to temp.txt
     call self.saveConfs or cp the file from cache to original to finalize the changes
     
     Note: It does some minor edits to the value passed if name==GRUB_DEFAULT
@@ -532,8 +560,19 @@ class Ui(QtWidgets.QMainWindow):
         self.checkBox_look_for_other_os.clicked.connect(self.checkBox_look_for_other_os_callback)
 
         
+#todo use a set for self.original_modifiers instead of list
 
-
+    def cBox_force_timeout_callback(self):
+        box=self.sender()
+        recordfail=get_value("GRUB_RECORDFAIL_TIMEOUT=",[])
+        if (recordfail and self.cBox_force_timeout.isChecked()) or (not recordfail and not self.cBox_force_timeout.isChecked()):
+            if box in self.original_modifiers:
+                self.original_modifiers.remove(box)
+        else:
+            if not box in self.original_modifiers:
+                self.original_modifiers.append(box)
+                
+        
 
 
     def ledit_grub_timeout_callback(self):
@@ -548,7 +587,20 @@ class Ui(QtWidgets.QMainWindow):
             if ledit in self.original_modifiers:
                 self.original_modifiers.remove(ledit)
         self.handle_modify()
-
+        self.handle_force_timeout()
+        
+    def handle_force_timeout(self):
+        text = self.ledit_grub_timeout.text()
+        
+        
+        try:
+            if float(text)==0 :
+                self.cBox_force_timeout.setEnabled(True)
+            else:
+                self.cBox_force_timeout.setEnabled(False)
+        except ValueError:
+            #current value of timeout is not a number
+            pass
 
     def checkBox_boot_default_entry_after_on_toggle(self):
         """ on toggle handlerfor checkBox_boot_default_entry_after """
@@ -891,20 +943,48 @@ color:black;
         
         """
         if not only_snapshots:
-            try:
-                #catch error that might occur when self.configurations is not initialized
-                index =self.comboBox_configurations.currentIndex()
-            except AttributeError:
-                pass
+            index =self.comboBox_configurations.currentIndex()
 
-            finally:
-
-                timeout=get_value('GRUB_TIMEOUT=',self.issues)
-                if  timeout !=None and timeout!='-1':
-                    # printer(timeout)
-                    self.ledit_grub_timeout.setText(timeout)
-                else:
-                    self.checkBox_boot_default_entry_after.setChecked(False)
+            timeout=get_value('GRUB_TIMEOUT=',self.issues)
+            if  timeout !=None and timeout!='-1':
+                # printer(timeout)
+                self.ledit_grub_timeout.setText(timeout)
+                if float(timeout)==0:
+                    recordfail=get_value("GRUB_RECORDFAIL_TIMEOUT=",[])
+                    
+                    #record fail set
+                    if recordfail is not None and float(recordfail)==0:
+                        self.cBox_force_timeout.setChecked(True)
+                    
+                    
+                    #recordfail is not set or record fail is not set on zero
+                    if  not(recordfail is not None and float(recordfail)==0):
+                        self.dialog_grub_timeout_warning=DialogUi()
+                        dialog=self.dialog_grub_timeout_warning
+                        file =self.get_curr_loaded_file()
+                        dialog.setText(f"On {file} GRUB_TIMEOUT=0 but GRUB_RECORDFAIL_TIMEOUT is not 0."+
+                            " So timeout will not be zero when this configuration is used.")
+                        
+                        def small_fix():
+                            if self.get_curr_loaded_file()!="/etc/default/grub":
+                                set_value("GRUB_RECORDFAIL_TIMEOUT=","0",file_loc)
+                                dialog.close()
+                            else:
+                                initialize_temp_file()
+                                set_value("GRUB_RECORDFAIL_TIMEOUT=","0",)
+                                self.saveConfs()
+                                dialog.close()
+                                
+                            
+                        dialog.setBtnOkText("Fix")
+                        dialog.btn_ok.clicked.connect(small_fix)
+                        dialog.removeCheckBox()
+                        dialog.show()
+                        
+                    
+                
+            else:
+                self.checkBox_boot_default_entry_after.setChecked(False)
 
 
 
@@ -990,6 +1070,7 @@ color:black;
             self.original_modifiers=[]
         self.handle_modify()
         self.set_comboBox_grub_default_style()
+        self.handle_force_timeout()
         
         
     def set_lbl_details(self):
@@ -1015,11 +1096,11 @@ color:black;
 
         index =self.comboBox_configurations.currentIndex()
         total=len(self.configurations)
+        
         if index ==0 or (index==total-1 and "(modified)" in self.configurations[-1]):
             target_file_copy = GRUB_CONF_LOC
         else:
             target_file_copy =f'{DATA_LOC}/snapshots/'+self.configurations[index]
-
         initialize_temp_file(target_file_copy)
         
         if self.checkBox_show_menu.isChecked():
@@ -1056,10 +1137,18 @@ color:black;
 
         if self.checkBox_boot_default_entry_after.isChecked():
             set_value('GRUB_TIMEOUT=',self.ledit_grub_timeout.text())
-            # printer('setting grub-timeout')
-
         else:
             set_value('GRUB_TIMEOUT=','-1')
+        
+        if self.checkBox_boot_default_entry_after.isChecked() and \
+            self.cBox_force_timeout.isEnabled() and \
+            self.cBox_force_timeout.isChecked():
+                    
+            set_value("GRUB_RECORDFAILTIMEOUT=","0")
+        else:
+            remove_value('GRUB_RECORDFAILTIMEOUT=')
+
+        
             # printer('setting grub-timeout -1')
 
         #look for other os
@@ -1168,7 +1257,21 @@ color:black;
         insert_into(self.HLayout_save,1,self.loading_bar)
         self.saveConfs_worker=self.startWorker(self.set_conf_and_update_lbl_details,self.onSaveConfsFinish,None)
         
-
+    def get_curr_loaded_file(self)->str:
+        """
+        returns the file that is currently loaded in the editor
+        """
+        text = str(self.comboBox_configurations.currentText())
+        
+        if "(modified)" in text:
+            text=text[:text.find("(modified)")]
+        
+        if text!=GRUB_CONF_LOC:
+            text=f"{DATA_LOC}/snapshots/{text}"
+        
+        return text
+        
+            
     def checkBox_look_for_other_os_callback(self):
         """ callback handler for checkBox_look_for_other_os
             reacts to modifications
@@ -1353,24 +1456,7 @@ color:black;
 
         self.recommendations=[]
         self.recmds_fixes=[]
-        grub_timeout_value=self.ledit_grub_timeout.text()
         
-        if self.checkBox_boot_default_entry_after.isChecked() and grub_timeout_value=='0':
-            # self.ledit_grub_timeout.setText('Use 0.0 instead of 0 ')
-            # self.ledit_grub_timeout.selectAll()
-            # self.ledit_grub_timeout.setFocus()
-            self.recommendations.append('If you are doing dual boot it is preferred to use 0.0 instead of 0 as timeout')
-            def temp():
-                self.ledit_grub_timeout.setText('0.0')
-            self.recmds_fixes.append(temp)
-
-
-       
-        
-        
-        
-        # self.show_saving()
-        # printer(interrupt,'interrupt')
         if not unsafe:
             if  len(self.recommendations)==0:
                 self.saveConfsToCache()
@@ -1518,10 +1604,11 @@ color:black;
         try:
             if "update-grub" in os.listdir( "/usr/bin/"):
                 to_execute=f'pkexec sh -c  \' cp -f  "{DATA_LOC}/snapshots/{line}" {write_file} && update-grub  \' '
-                # print(to_execute)
+                print(to_execute)
                 process = subprocess.Popen([to_execute], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
             else:
                 to_exec=f'pkexec sh -c  \' cp -f  "{DATA_LOC}/snapshots/{line}" {write_file} && grub-mkconfig -o /boot/grub/grub.cfg  \' '
+                print(to_exec)
                 process = subprocess.Popen([to_exec], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True)
             self.lbl_details_text='Waiting for authentication \n'
             
