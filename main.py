@@ -236,7 +236,7 @@ def set_value(name,val,target_file=f'{CACHE_LOC}/temp.txt'):
         raise ValueError("name passed for set_value doesn't contain = as last character")
     
     if name not in available_conf_keys:
-        raise ValueError("name not in available_conf_keys")
+        raise ValueError("name not in available_conf_keys :"+name)
     
     if name =="GRUB_DEFAULT=" and val!="saved":
         if val[0]!='"' and val[-1]!='"':
