@@ -430,6 +430,10 @@ class Ui(QtWidgets.QMainWindow):
         self.show()
 
         
+        #tooltips
+        self.force_timeout_tt="In some cases this has to be enabled to hide the grub menu"
+        self.cBox_force_timeout.setToolTip(self.force_timeout_tt)
+        
         #possible windows that will be created later 
 
         #a window to show suggestios regarding grub configuration
