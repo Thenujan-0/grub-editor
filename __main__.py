@@ -32,7 +32,7 @@ logging.basicConfig(
 
 size= os.path.getsize(LOG_PATH)
 
-if size>5*10^6:
+if size>5*10**6:
     with open(LOG_PATH) as f:
         data = f.read()
         ind=floor(len(data)/2)
