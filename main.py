@@ -592,16 +592,19 @@ class Ui(QtWidgets.QMainWindow):
                 self.original_modifiers.remove(ledit)
         self.handle_modify()
         self.handle_force_timeout()
-        
+
     def handle_force_timeout(self):
         text = self.ledit_grub_timeout.text()
         
+        force_timeout=self.cBox_force_timeout
         
         try:
             if float(text)==0 :
-                self.cBox_force_timeout.setEnabled(True)
+                force_timeout.setEnabled(True)
+                force_timeout.setToolTip(self.force_timeout_tt)
             else:
-                self.cBox_force_timeout.setEnabled(False)
+                force_timeout.setEnabled(False)
+                force_timeout.setToolTip("Timeout has to be set to 0 in order to force the timeout")
         except ValueError:
             #current value of timeout is not a number
             pass
@@ -960,32 +963,6 @@ color:black;
                     if recordfail is not None and float(recordfail)==0:
                         self.cBox_force_timeout.setChecked(True)
                     
-                    
-                    #recordfail is not set or record fail is not set on zero
-                    if  not(recordfail is not None and float(recordfail)==0):
-                        self.dialog_grub_timeout_warning=DialogUi()
-                        dialog=self.dialog_grub_timeout_warning
-                        file =self.get_curr_loaded_file()
-                        dialog.setText(f"On {file} GRUB_TIMEOUT=0 but GRUB_RECORDFAIL_TIMEOUT is not 0."+
-                            " So timeout will not be zero when this configuration is used.")
-                        
-                        def small_fix():
-                            if self.get_curr_loaded_file()!="/etc/default/grub":
-                                set_value("GRUB_RECORDFAIL_TIMEOUT=","0",file_loc)
-                                dialog.close()
-                            else:
-                                initialize_temp_file()
-                                set_value("GRUB_RECORDFAIL_TIMEOUT=","0",)
-                                self.saveConfs()
-                                dialog.close()
-                                
-                            
-                        dialog.setBtnOkText("Fix")
-                        dialog.btn_ok.clicked.connect(small_fix)
-                        dialog.removeCheckBox()
-                        dialog.show()
-                        
-                    
                 
             else:
                 self.checkBox_boot_default_entry_after.setChecked(False)
@@ -1148,9 +1125,9 @@ color:black;
             self.cBox_force_timeout.isEnabled() and \
             self.cBox_force_timeout.isChecked():
                     
-            set_value("GRUB_RECORDFAILTIMEOUT=","0")
+            set_value("GRUB_RECORDFAIL_TIMEOUT=","0")
         else:
-            remove_value('GRUB_RECORDFAILTIMEOUT=')
+            remove_value('GRUB_RECORDFAIL_TIMEOUT=')
 
         
             # printer('setting grub-timeout -1')
