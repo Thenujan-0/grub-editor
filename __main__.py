@@ -45,6 +45,11 @@ def except_hook(_,exception,__):
 	# logging.error(traceback.format_exc())
     text = "".join(traceback.format_exception(exception))
     logging.error("Unhandled exception: %s", text)  
+    
+    #escape quotes in text
+    text=text.replace('"','\\"')
+    cmd=f"python3 {PATH}/widgets/error_dialog.py 'An Exception occured' \"\"\"{text}\"\"\""
+    subprocess.Popen([cmd],shell=True)
 
 
 def main_():
@@ -60,5 +65,7 @@ if __name__ == '__main__':
     try:
         main_()
     except Exception as e:
-        subprocess.Popen([f"python3 {PATH}/widgets/error_dialog.py '{str(e)}' '{traceback.format_exc()}'"],shell=True)
+        print("Caught exception")
+        cmd=f"python3 {PATH}/widgets/error_dialog.py 'An Exception occured' '{traceback.format_exc()}'"
+        subprocess.Popen([cmd],shell=True)
         exit(1)
