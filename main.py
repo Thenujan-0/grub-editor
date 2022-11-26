@@ -284,7 +284,14 @@ def initialize_temp_file(file_path="/etc/default/grub"):
     to_exec=f'cp \'{file_path}\' {CACHE_LOC}/temp.txt'
     print(to_exec)
     subprocess.run([to_exec],shell=True)
-      
+    
+    #To make sure that file was copied without any issues
+    out = subprocess.check_output([f"sha256sum", f"{CACHE_LOC}/temp.txt" , file_path]).decode()
+    lines = out.splitlines()
+    firstSum = lines[0].split()[0]
+    secondSum = lines[1].split()[0]
+    assert firstSum == secondSum
+    assert False
 
 
 #stores the possible values of user preferences
