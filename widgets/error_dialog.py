@@ -24,6 +24,7 @@ class ErrorDialogUi(QtWidgets.QDialog):
         uic.loadUi(f'{PATH}/ui/error_dialog.ui',self)
         
         self.btn_ok.clicked.connect(self.selfClose)
+        self.btn_copy.clicked.connect(self.onCopy)
 
         
         #make sure window is in center of the screen
@@ -63,6 +64,9 @@ class ErrorDialogUi(QtWidgets.QDialog):
             self._exitApp()
         else:
             event.accept()
+    
+    def onCopy(self):
+        QApplication.clipboard().setText(self.lbl_error_body.text())
 
 def main():
     app= QtWidgets.QApplication([])
