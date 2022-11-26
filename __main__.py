@@ -47,8 +47,8 @@ def except_hook(_,exception,__):
     logging.error("Unhandled exception: %s", text)  
     
     #escape quotes in text
-    text=text.replace('"','\\"')
-    cmd=f"python3 {PATH}/widgets/error_dialog.py 'An Exception occured' \"\"\"{text}\"\"\""
+    text=text.replace("'","\'")
+    cmd=f"python3 {PATH}/widgets/error_dialog.py 'An Exception occured' '{text}'"
     subprocess.Popen([cmd],shell=True)
 
 
