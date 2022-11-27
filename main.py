@@ -291,7 +291,6 @@ def initialize_temp_file(file_path="/etc/default/grub"):
     firstSum = lines[0].split()[0]
     secondSum = lines[1].split()[0]
     assert firstSum == secondSum
-    assert False
 
 
 #stores the possible values of user preferences
