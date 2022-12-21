@@ -959,8 +959,9 @@ color:black;
             index =self.comboBox_configurations.currentIndex()
 
             timeout=get_value('GRUB_TIMEOUT=',self.issues)
-            if  timeout !=None and timeout!='-1':
+            if  timeout is not None and timeout!='-1':
                 # printer(timeout)
+                timeout = remove_quotes(timeout)
                 self.ledit_grub_timeout.setText(timeout)
                 if float(timeout)==0:
                     recordfail=get_value("GRUB_RECORDFAIL_TIMEOUT=",[])
@@ -969,9 +970,9 @@ color:black;
                     if recordfail is not None and float(recordfail)==0:
                         self.cBox_force_timeout.setChecked(True)
                     
-                
             else:
                 self.checkBox_boot_default_entry_after.setChecked(False)
+                self.ledit_grub_timeout.setText("0.0")
 
 
 
@@ -1019,13 +1020,6 @@ color:black;
                 self.checkBox_show_menu.setChecked(False)
             elif get_value('GRUB_TIMEOUT_STYLE=',self.issues)=='menu':
                 self.checkBox_show_menu.setChecked(True)
-
-            
-                
-            if get_value('GRUB_TIMEOUT=',self.issues)=='-1' or get_value('GRUB_TIMEOUT=',self.issues)==None:
-                self.checkBox_boot_default_entry_after.setChecked(False)
-            else:
-                self.checkBox_boot_default_entry_after.setChecked(True)
                 
             self.comboBox_grub_default.blockSignals(True)
             self.set_comboBox_grub_default(show_invalid_default=show_issues)
