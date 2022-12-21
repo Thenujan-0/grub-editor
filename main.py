@@ -37,7 +37,7 @@ from widgets.loading_bar import LoadingBar
 GRUB_CONF_LOC='/etc/default/grub'
 file_loc=GRUB_CONF_LOC
 HOME =os.getenv('HOME')
-DEBUG=True
+DEBUG=False
 if os.getenv("XDG_CONFIG_HOME") is None:
     CONFIG_LOC=HOME+"/.config/grub-editor"
 else:
