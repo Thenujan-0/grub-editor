@@ -3,7 +3,7 @@ import sys
 from time import sleep
 from PyQt5 import QtWidgets,QtCore,QtTest
 from tools import *
-import main
+from grubEditor import main
 
 def test_no_show_details(qtbot):
     """ Test the usage of show_details btn when update-grub is performed """

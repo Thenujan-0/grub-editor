@@ -4,13 +4,8 @@ import sys
 from PyQt5 import QtWidgets,QtCore
 from tools import create_tmp_file
 
-HOME =os.getenv('HOME')
-PATH=os.path.dirname(os.path.realpath(__file__))
 
-#parent dir
-PATH=PATH[0:-5]
-sys.path.append(PATH)
-import main
+from grubEditor import main
 
 commented_config="""#GRUB_DEFAULT="Manjaro Linux"
 #GRUB_TIMEOUT=20

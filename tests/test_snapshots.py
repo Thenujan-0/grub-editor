@@ -9,9 +9,9 @@ from tools import change_comboBox_current_index , windows
 PATH = os.path.dirname(os.path.realpath(__file__))
 #get the parent directory
 PATH = PATH[0:-5]
-sys.path.append(PATH)
+# sys.path.append(PATH)
 
-import main
+from grubEditor.main import main
 
 HOME=os.getenv("HOME")
 

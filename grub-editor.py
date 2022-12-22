@@ -6,7 +6,8 @@ import traceback
 import logging
 from math import floor
 
-import main
+from grubEditor.main import main
+
 
 PATH=os.path.dirname(os.path.realpath(__file__))
 
@@ -52,8 +53,6 @@ def except_hook(_,exception,__):
     subprocess.Popen([cmd],shell=True)
 
 
-def main_():
-    main.main()
 
 
 sys.excepthook = except_hook
@@ -63,7 +62,8 @@ sys.excepthook = except_hook
 if __name__ == '__main__':
     print('starting main')
     try:
-        main_()
+        print(PATH)
+        main()
     except Exception as e:
         print("Caught exception")
         cmd=f"python3 {PATH}/widgets/error_dialog.py 'An Exception occured' '{traceback.format_exc()}'"

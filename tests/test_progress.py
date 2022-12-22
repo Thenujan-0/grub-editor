@@ -5,12 +5,6 @@ from time import sleep
 from PyQt5 import QtWidgets,QtCore
 from tools import *
 
-PATH = os.path.dirname(os.path.realpath(__file__))
-
-#root directory path
-PATH=PATH[0:-6]
-
-sys.path.append(PATH)
 from widgets.progress import ProgressUi
 
 def test_btn_show_details(qtbot):

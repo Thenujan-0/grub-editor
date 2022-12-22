@@ -4,7 +4,7 @@ import sys
 
 from PyQt5 import QtWidgets,QtCore
 
-import main
+from grubEditor import main
 
 def test_invalid_default_entry(qtbot):
     mw=main.Ui()

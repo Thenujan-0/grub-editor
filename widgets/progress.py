@@ -12,7 +12,7 @@ if 'widgets' == PATH[-7:]:
     sys.path.append(PATH[0:-8])
     
 import widgets.loading_bar as loading_bar
-from libs.qt_functools import insert_into
+from grubEditor.libs.qt_functools import insert_into
 
 
 class ProgressUi(QtWidgets.QMainWindow):

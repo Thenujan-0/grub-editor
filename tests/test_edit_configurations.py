@@ -10,7 +10,7 @@ HOME =os.getenv('HOME')
 PATH=os.path.dirname(os.path.realpath(__file__))
 
 #parent dir
-PATH=PATH[0:-5]
+PATH=PATH[0:-5] + "/grubEditor"
 sys.path.append(PATH)
 
 import main

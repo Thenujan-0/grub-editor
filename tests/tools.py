@@ -14,9 +14,9 @@ PATH=os.path.dirname(os.path.realpath(__file__))
 PARENT_PATH=str(Path(PATH).parent)
 
 
-
+print(PARENT_PATH)
 sys.path.append(PARENT_PATH)
-import main
+from grubEditor.main import main
 
 HOME=os.getenv("HOME")
 

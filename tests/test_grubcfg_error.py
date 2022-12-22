@@ -4,8 +4,8 @@ from time import sleep
 
 from PyQt5 import QtCore
 
-import main
-from libs import find_entries
+from grubEditor import main
+from grubEditor.libs import find_entries
 
 
 

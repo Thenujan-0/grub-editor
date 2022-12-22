@@ -2,9 +2,18 @@ import subprocess
 import os 
 import sys
 from PyQt5 import QtWidgets,QtCore
-from  main import get_value, set_value,remove_value
+
+PATH=os.path.dirname(os.path.realpath(__file__))
+PARENT_PATH=str(Path(PATH).parent)
+
+
+print(PARENT_PATH)
+sys.path.append(PARENT_PATH)
+
+from  grubEdior.main.main import get_value, set_value,remove_value
 from tools import create_tmp_file,get_file_sum
-import main
+from  grubEdior.main import main
+
 commented_config="""#GRUB_DEFAULT="Manjaro Linux"
 #GRUB_TIMEOUT=20
 #GRUB_TIMEOUT_STYLE=menu

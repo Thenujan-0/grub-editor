@@ -26,9 +26,9 @@ from PyQt5.QtWidgets import QDesktopWidget
 
 
 
-from libs.qt_functools import insert_into, reconnect
-from libs.worker import Worker
-from libs.find_entries import GrubConfigNotFound, find_entries
+from .libs.qt_functools import insert_into, reconnect
+from .libs.worker import Worker
+from .libs.find_entries import GrubConfigNotFound, find_entries
 
 from widgets.dialog import DialogUi
 from widgets.error_dialog import ErrorDialogUi
