@@ -2,8 +2,15 @@ import subprocess
 import os 
 import sys
 from PyQt5 import QtWidgets,QtCore
-import main
 from tools import create_tmp_file
+
+HOME =os.getenv('HOME')
+PATH=os.path.dirname(os.path.realpath(__file__))
+
+#parent dir
+PATH=PATH[0:-5]
+sys.path.append(PATH)
+import main
 
 commented_config="""#GRUB_DEFAULT="Manjaro Linux"
 #GRUB_TIMEOUT=20
@@ -30,9 +37,10 @@ GRUB_PRELOAD_MODULES="part_gpt part_msdos"
 
 """
 
+
+
 PATH= os.path.dirname(os.path.realpath(__file__))
 HOME=os.getenv('HOME')
-
 
 
 
@@ -180,4 +188,15 @@ def test_grub_default_saved():
     assert val=="saved"
     assert issues==[]
     
+
+CONFIG_QUOTED ="""
+GRUB_DEFAULT="Manjaro Linux" """    
+
+def test_remove_quotes(qtbot):
+    tmp_file = create_tmp_file(CONFIG_QUOTED)
+    issues = []
+    val = main.get_value("GRUB_DEFAULT=",issues,tmp_file,remove_quotes_=True)
+    assert val == "Manjaro Linux"
+    val = main.get_value("GRUB_DEFAULT=",issues,tmp_file,remove_quotes_=False)
+    assert val == "\"Manjaro Linux\""
     

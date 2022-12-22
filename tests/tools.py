@@ -87,7 +87,7 @@ def windows():
     return final_window_list,final_id_list
 
 def create_tmp_file(data):
-    """ Creates a file with the data provided as argument and returns the name of file """
+    """ Creates a file with the data provided as argument and returns the path of file """
     value =randint(0,20)
     tmp_file=f'{HOME}/.cache/grub-editor/temp{value}.txt'
     subprocess.run([f'touch {tmp_file}'],shell=True)
