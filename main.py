@@ -123,7 +123,7 @@ def remove_quotes(value:str)->str:
 available_conf_keys=["GRUB_DEFAULT=","GRUB_DISABLE_OS_PROBER=",
                     "GRUB_TIMEOUT_STYLE=","GRUB_TIMEOUT=","GRUB_CMDLINE_LINUX=","GRUB_RECORDFAIL_TIMEOUT="]
 
-def get_value(name,issues,read_file=None):
+def get_value(name,issues,read_file=None, remove_quotes_=False):
     """arguments are  the string to look for 
     and the list to append issues to
     Note: It does some minor edits to the value read from the file before 
@@ -187,6 +187,8 @@ def get_value(name,issues,read_file=None):
                 issues.append(comment_issue_string)
             else:
                 issues.append(f"{name} was not found in {read_file}")
+        elif remove_quotes_:
+            val = remove_quotes(val)
         if name=="GRUB_DISABLE_OS_PROBER=" and val is None:
             val="true"
         return val
@@ -569,7 +571,7 @@ class Ui(QtWidgets.QMainWindow):
         self.btn_reset.clicked.connect(self.btn_reset_callback)
         self.checkBox_look_for_other_os.clicked.connect(self.checkBox_look_for_other_os_callback)
 
-        
+
 #todo use a set for self.original_modifiers instead of list
 
     def cBox_force_timeout_callback(self):
@@ -958,10 +960,9 @@ color:black;
         if not only_snapshots:
             index =self.comboBox_configurations.currentIndex()
 
-            timeout=get_value('GRUB_TIMEOUT=',self.issues)
+            timeout=get_value('GRUB_TIMEOUT=',self.issues,remove_quotes_=True)
             if  timeout is not None and timeout!='-1':
                 # printer(timeout)
-                timeout = remove_quotes(timeout)
                 self.ledit_grub_timeout.setText(timeout)
                 if float(timeout)==0:
                     recordfail=get_value("GRUB_RECORDFAIL_TIMEOUT=",[])
@@ -969,6 +970,8 @@ color:black;
                     #record fail set
                     if recordfail is not None and float(recordfail)==0:
                         self.cBox_force_timeout.setChecked(True)
+                        
+                self.checkBox_boot_default_entry_after.setChecked(True)
                     
             else:
                 self.checkBox_boot_default_entry_after.setChecked(False)
