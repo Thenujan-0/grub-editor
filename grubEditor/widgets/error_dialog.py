@@ -5,10 +5,7 @@ import sys
 
 PATH = os.path.dirname(os.path.realpath(__file__))
 
-#get parent path
-PATH = PATH[0:-7]
 
-sys.path.append(PATH)
 
 class ErrorDialogUi(QtWidgets.QDialog):
     """ Avaiable functions are
@@ -21,6 +18,7 @@ class ErrorDialogUi(QtWidgets.QDialog):
 
     def __init__(self,):
         super(ErrorDialogUi,self).__init__()
+        print(PATH)
         uic.loadUi(f'{PATH}/ui/error_dialog.ui',self)
         
         self.btn_ok.clicked.connect(self.selfClose)
