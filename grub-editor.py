@@ -66,6 +66,6 @@ if __name__ == '__main__':
         main()
     except Exception as e:
         print("Caught exception")
-        cmd=f"python3 {PATH}/grubEdior/widgets/error_dialog.py 'An Exception occured' '{traceback.format_exc()}'"
+        cmd=f"python3 {PATH}/grubEditor/widgets/error_dialog.py 'An Exception occured' '{traceback.format_exc()}'"
         subprocess.Popen([cmd],shell=True)
         exit(1)
