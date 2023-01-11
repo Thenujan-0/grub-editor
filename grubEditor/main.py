@@ -25,7 +25,7 @@ from PyQt5 import QtCore ,QtWidgets, uic,QtGui
 from PyQt5.QtWidgets import QDesktopWidget
 
 from grubEditor.locations import DATA_LOC, CACHE_LOC, CONFIG_LOC, GRUB_CONF_LOC
-from grubEditor.core import GRUB_CONF, CONF_HANDLER, remove_quotes
+from grubEditor.core import GRUB_CONF, CONF_HANDLER, remove_quotes, printer
 
 from grubEditor.libs.qt_functools import insert_into, reconnect
 from grubEditor.libs.worker import Worker
@@ -34,35 +34,12 @@ from grubEditor.libs.find_entries import GrubConfigNotFound, find_entries
 from grubEditor.widgets.dialog import DialogUi
 from grubEditor.widgets.error_dialog import ErrorDialogUi
 from grubEditor.widgets.loading_bar import LoadingBar
+from grubEditor.widgets.view_mode_popup import ViewModePopup
 
 conf_handler = CONF_HANDLER()
 DEBUG=False
 
 
-def printer(*args):
-    """ writes to log and writes to console """
-    time_now = dt.now()
-    printer_temp=''
-    for arg in args:
-        printer_temp= printer_temp +' '+str(arg)
-    
-    if sys.platform == 'linux':
-        if os.stat(f'{DATA_LOC}/logs/main.log').st_size > 5000000:#number is in bytes
-            
-            #only keep last half of the file
-            with open(f'{DATA_LOC}/logs/main.log','r') as f:
-                data =f.read()
-                lendata = len(data)/2
-                lendata=math.floor(lendata)
-            new_data = data[lendata:]+'\n'
-            
-            with open(f'{DATA_LOC}/logs/main.log','w') as f:
-                f.write(str(time_now)+new_data+'\n')
-                
-                
-        with open(f'{DATA_LOC}/logs/main.log','a') as f:
-            f.write(str(time_now)+printer_temp+'\n')
-    print(printer_temp)
 
 
 write_file='/opt/grub_fake.txt'
@@ -213,34 +190,22 @@ def clear_layout(layout):
             elif child.layout() is not None:
                 clear_layout(child.layout())
 
-         
 class Ui(QtWidgets.QMainWindow):
     resized = QtCore.pyqtSignal()
     snapshot_lbl_len_const=23
-    
     
     def resizeEvent(self, event):
         """ resize event handler """
         self.resized.emit()
         return super(Ui, self).resizeEvent(event)
-    
-        
-        
     def someFunction(self):
         self.createSnapshotList()
-            
             
     def __init__(self):
         super(Ui, self).__init__()
         self.threadpool= QtCore.QThreadPool()
         uic.loadUi(f'{PATH}/ui/main.ui',self)
         
-        
-        # print('------------------------')
-        
-        #to make sure that Main window is unaccesible when a child window (QWidget) is open
-        # self.setWindowModality(QtCore.Qt.ApplicationModal)
-
         #make sure window is in center of the screen
         qtRectangle = self.frameGeometry()
         centerPoint = QDesktopWidget().availableGeometry().center()
@@ -249,7 +214,6 @@ class Ui(QtWidgets.QMainWindow):
 
         self.show()
 
-        
         #tooltips
         self.force_timeout_tt="In some cases this has to be enabled to hide the grub menu"
         self.cBox_force_timeout.setToolTip(self.force_timeout_tt)
@@ -284,7 +248,7 @@ class Ui(QtWidgets.QMainWindow):
             self.dialog_grub_cfg_not_found=DialogUi(False)
             dialog =self.dialog_grub_cfg_not_found
             dialog.setText("Grub config was not found at /boot/grub/grub.cfg."+
-                "Please make sure grub is installed in this operating system."+
+                " Please make sure grub is installed in this operating system."+
                 " If grub is installed in another linux operating system then "+
                 "grub.cfg would not be present in this operating system"+
                 " and you will not be able to use grub editor from this operating system")
@@ -322,15 +286,6 @@ class Ui(QtWidgets.QMainWindow):
             self.setEnabled(False)
             return
         
-        # except Exception as e:
-        #     self.error_dialog=ErrorDialogUi()
-        #     self.error_dialog.set_error_title(str(e))
-        #     self.error_dialog.set_error_body(traceback.format_exc())
-        #     self.error_dialog.exitOnAny()
-        #     self.error_dialog.show()
-        #     self.setEnabled(False)
-        #     return
-
         #add all the available operating systems to comboBox_grub_default and self.all_entries
         self.all_entries =[]
         for entry in self.main_entries:
@@ -354,7 +309,7 @@ class Ui(QtWidgets.QMainWindow):
         self.issues=[]
         
         
-        self.original_modifiers=[]
+        self.original_modifiers=set()
         self.modified_original =False
         
         self.setUiElements(show_issues=True)
@@ -384,17 +339,14 @@ class Ui(QtWidgets.QMainWindow):
         self.checkBox_look_for_other_os.clicked.connect(self.checkBox_look_for_other_os_callback)
 
 
-#todo use a set for self.original_modifiers instead of list
 
     def cBox_force_timeout_callback(self):
         box=self.sender()
         recordfail=conf_handler.get(GRUB_CONF.GRUB_RECORDFAIL_TIMEOUT,[])
         if (recordfail and self.cBox_force_timeout.isChecked()) or (not recordfail and not self.cBox_force_timeout.isChecked()):
-            if box in self.original_modifiers:
-                self.original_modifiers.remove(box)
+            self.original_modifiers.discard(box)
         else:
-            if not box in self.original_modifiers:
-                self.original_modifiers.append(box)
+            self.original_modifiers.add(box)
                 
         
 
@@ -405,11 +357,9 @@ class Ui(QtWidgets.QMainWindow):
         ledit = self.ledit_grub_timeout
         # printer(text,value)
         if text != value:
-            if ledit not in self.original_modifiers:
-                self.original_modifiers.append(ledit)
+            self.original_modifiers.add(ledit)
         else:
-            if ledit in self.original_modifiers:
-                self.original_modifiers.remove(ledit)
+            self.original_modifiers.discard(ledit)
         self.handle_modify()
         self.handle_force_timeout()
 
@@ -436,19 +386,15 @@ class Ui(QtWidgets.QMainWindow):
         if  timeout !=None and timeout !='-1':
             # printer(timeout)
             if self.checkBox_boot_default_entry_after.isChecked():
-                if btn  in self.original_modifiers:
-                    self.original_modifiers.remove(btn)
+                self.original_modifiers.discard(btn)
             else:
-                if btn not in self.original_modifiers:
-                    self.original_modifiers.append(btn)
+                self.original_modifiers.add(btn)
 
         elif (timeout == None or timeout =='-1' ) :
             if self.checkBox_boot_default_entry_after.isChecked():
-                if btn  not in self.original_modifiers:
-                    self.original_modifiers.append(btn)
+                self.original_modifiers.add(btn)
             else:
-                if btn   in self.original_modifiers:
-                    self.original_modifiers.remove(btn)
+                self.original_modifiers.discard(btn)
 
         self.handle_modify()
 
@@ -468,18 +414,14 @@ class Ui(QtWidgets.QMainWindow):
         btn=self.sender()
         if timeout_style == 'menu':
             if btn.isChecked():
-                if btn in self.original_modifiers:
-                    self.original_modifiers.remove(btn)
+                self.original_modifiers.discard(btn)
             else:
-                if btn not in self.original_modifiers:
-                    self.original_modifiers.append(btn)
+                self.original_modifiers.add(btn)
         elif timeout_style == 'hidden':
             if not btn.isChecked():
-                if btn in self.original_modifiers:
-                    self.original_modifiers.remove(btn)
+                self.original_modifiers.discard(btn)
             else:
-                if btn not in self.original_modifiers:
-                    self.original_modifiers.append(btn)
+                self.original_modifiers.add(btn)
         self.handle_modify()
 
     def comboBox_configurations_callback(self,value):
@@ -503,11 +445,9 @@ class Ui(QtWidgets.QMainWindow):
         ledit = self.ledit_grub_timeout
         # printer(text,value)
         if text != value:
-            if ledit not in self.original_modifiers:
-                self.original_modifiers.append(ledit)
+            self.original_modifiers.add(ledit)
         else:
-            if ledit in self.original_modifiers:
-                self.original_modifiers.remove(ledit)
+            self.original_modifiers.discard(ledit)
         self.handle_modify()
             
         
@@ -526,11 +466,9 @@ class Ui(QtWidgets.QMainWindow):
         ledit = self.ledit_grub_timeout
         # printer(text,value)
         if text != value:
-            if ledit not in self.original_modifiers:
-                self.original_modifiers.append(ledit)
+            self.original_modifiers.add(ledit)
         else:
-            if ledit in self.original_modifiers:
-                self.original_modifiers.remove(ledit)
+            self.original_modifiers.discard(ledit)
         self.handle_modify()
 
     def handle_invalid_default_entry(self,invalid_value):
@@ -861,7 +799,7 @@ color:black;
                 self.error_dialog.show()
                 
         if not only_snapshots:
-            self.original_modifiers=[]
+            self.original_modifiers=set()
         self.handle_modify()
         self.set_comboBox_grub_default_style()
         self.handle_force_timeout()
@@ -1067,15 +1005,12 @@ color:black;
         cbox=self.checkBox_look_for_other_os
 
         #check if cbox is showing right value
-        if (value=="true" and not cbox.isChecked() or value=="false" and cbox.isChecked()) \
-            and cbox in self.original_modifiers:
-            
-            self.original_modifiers.remove(cbox)
+        if (value=="true" and not cbox.isChecked() or value=="false" and cbox.isChecked()):
+            self.original_modifiers.discard(cbox)
             
         # check if cbox is showing false value 
-        elif ( (value=="true" and  cbox.isChecked()) or (value=="false" and not cbox.isChecked()) ) \
-            and cbox not in self.original_modifiers:
-            self.original_modifiers.append(cbox)
+        elif (value=="true" and  cbox.isChecked()) or (value=="false" and not cbox.isChecked()) :
+            self.original_modifiers.add(cbox)
         else:
             printer("unknown case in checkbox_look_for_other_os_callback"+"\n"+
                             "value of checkBox.isChecked is "+str(cbox.isChecked())+"\n"+
@@ -1237,7 +1172,7 @@ color:black;
         try:
             new_loc= f'{DATA_LOC}/snapshots/'+snapshot_name
             view_default=get_preference('view_default')
-            self.view_btn_win =ViewButtonUi(new_loc)
+            self.view_btn_win =ViewModePopup(new_loc,conf_handler,self)
             
             if view_default==None:
                 self.view_btn_win.show()
@@ -1478,12 +1413,10 @@ color:black;
             current_conf=self.configurations[self.comboBox_configurations.currentIndex()]
             if grub_default !=combo_text and not "(modified)" in current_conf:
                 # self.modified_original = True
-                if comboBox not in self.original_modifiers:
-                    self.original_modifiers.append(self.sender())
+                self.original_modifiers.add(self.sender())
                 # printer(grub_default,combo_text)
             elif grub_default ==combo_text:
-                if comboBox in self.original_modifiers:
-                    self.original_modifiers.remove(comboBox)
+                self.original_modifiers.discard(comboBox)
             self.handle_modify()
         except Exception as e:
             printer(traceback.format_exc())
@@ -1498,21 +1431,13 @@ color:black;
         btn= self.sender()
         
         if btn.text()=='predefined:':
-            # printer('yes')
             default_entry =conf_handler.get(GRUB_CONF.GRUB_DEFAULT,self.issues)
-            # printer('grub_default')
             if (default_entry !='saved' and default_entry !=None) and btn.isChecked():
-                if btn  in self.original_modifiers:
-                    self.original_modifiers.remove(btn)  
-                # printer('1st')  
+                self.original_modifiers.discard(btn)  
             elif (default_entry =='saved' or default_entry ==None) and not btn.isChecked():
-                if btn in self.original_modifiers:
-                    self.original_modifiers.remove(btn)
-                # printer('2nd')
+                self.original_modifiers.discard(btn)
             else:
-                # printer('last')
-                if btn not in self.original_modifiers:
-                    self.original_modifiers.append(btn)
+                self.original_modifiers.add(btn)
         else:
             raise Exception("Unexpected  radiobutton callback")
         self.handle_modify()
@@ -1647,35 +1572,6 @@ class IssuesUi(QtWidgets.QMainWindow):
             printer(issue)
             self.listWidget.addItem(issue)
         
-class ViewButtonUi(QtWidgets.QDialog):
-    def __init__(self,file_location):
-        self.file_location = file_location
-        super(ViewButtonUi, self).__init__()
-        uic.loadUi(f'{PATH}/ui/view_snapshot.ui',self)
-        self.btn_on_the_application_itself.clicked.connect(self.btn_on_the_application_itself_callback)
-        self.btn_default_text_editor.clicked.connect(self.btn_default_text_editor_callback)
-
-        #create window in the center of the screen
-        qtRectangle = self.frameGeometry()
-        centerPoint = QDesktopWidget().availableGeometry().center()
-        qtRectangle.moveCenter(centerPoint)
-        self.move(qtRectangle.topLeft())
-
-    def safe_close(self,arg):
-        """makes sure the properties of checkbox is saved"""
-        if self.checkBox_do_this_everytime.isChecked():
-            set_preference('view_default',arg)
-        self.close()
-        
-    def btn_default_text_editor_callback(self):
-        self.safe_close('default_text_editor')
-        subprocess.Popen([f'xdg-open \'{self.file_location}\''],shell=True)
-        
-    def btn_on_the_application_itself_callback(self):
-        conf_handler.current_file= self.file_location
-        MainWindow.setUiElements(show_issues=False)
-        MainWindow.tabWidget.setCurrentIndex(0)
-        self.safe_close('on_the_application_itself')
         
 class CreateSnapshotUi(QtWidgets.QMainWindow):
     def __init__(self):

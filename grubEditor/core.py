@@ -1,7 +1,9 @@
 from enum import Enum
 import os
-
-from grubEditor.locations import CACHE_LOC
+import sys
+import math
+from datetime import datetime as dt
+from grubEditor.locations import CACHE_LOC, DATA_LOC
 
 
 
@@ -23,6 +25,31 @@ def remove_quotes(value:str)->str:
             value=value[1:-1]
         
         return value
+    
+def printer(*args):
+    """ writes to log and writes to console """
+    time_now = dt.now()
+    printer_temp=''
+    for arg in args:
+        printer_temp= printer_temp +' '+str(arg)
+    
+    if sys.platform == 'linux':
+        if os.stat(f'{DATA_LOC}/logs/main.log').st_size > 5000000:#number is in bytes
+            
+            #only keep last half of the file
+            with open(f'{DATA_LOC}/logs/main.log','r') as f:
+                data =f.read()
+                lendata = len(data)/2
+                lendata=math.floor(lendata)
+            new_data = data[lendata:]+'\n'
+            
+            with open(f'{DATA_LOC}/logs/main.log','w') as f:
+                f.write(str(time_now)+new_data+'\n')
+                
+                
+        with open(f'{DATA_LOC}/logs/main.log','a') as f:
+            f.write(str(time_now)+printer_temp+'\n')
+    print(printer_temp)
     
 class CONF_HANDLER():
     current_file :str = "/etc/default/grub"
