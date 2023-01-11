@@ -5,7 +5,7 @@ from time import sleep
 from PyQt5 import QtWidgets,QtCore
 from tools import *
 
-from widgets.progress import ProgressUi
+from grubEditor.widgets.progress import ProgressUi
 
 def test_btn_show_details(qtbot):
     #mw is mainWindow

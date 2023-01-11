@@ -2,17 +2,24 @@ import subprocess
 import os 
 import sys
 from PyQt5 import QtWidgets,QtCore
+from pathlib import Path
 
-PATH=os.path.dirname(os.path.realpath(__file__))
-PARENT_PATH=str(Path(PATH).parent)
+# PATH=os.path.dirname(os.path.realpath(__file__))
+# PARENT_PATH=str(Path(PATH).parent)
 
 
-print(PARENT_PATH)
-sys.path.append(PARENT_PATH)
+# print(PARENT_PATH)
+# sys.path.append(PARENT_PATH)
 
-from  grubEdior.main.main import get_value, set_value,remove_value
+from  grubEditor.core import CONF_HANDLER
 from tools import create_tmp_file,get_file_sum
-from  grubEdior.main import main
+from  grubEditor import main
+from grubEditor.locations import CACHE_LOC
+
+conf_handler = CONF_HANDLER()
+get_value = conf_handler.get
+set_value = conf_handler.set
+remove_value = conf_handler.remove
 
 commented_config="""#GRUB_DEFAULT="Manjaro Linux"
 #GRUB_TIMEOUT=20
@@ -83,14 +90,14 @@ GRUB_TIMEOUT_STYLE=menu"""
 
 def test_last_value(qtbot):
     
-    tmp_file=f'{main.CACHE_LOC}/temp4.txt'
+    tmp_file=f'{CACHE_LOC}/temp4.txt'
     subprocess.run([f'touch {tmp_file}'],shell=True)
     
     with open(tmp_file,'w') as f:
         f.write(config_last)
     
     issues=[]
-    val =main.get_value("GRUB_TIMEOUT_STYLE=",issues,tmp_file)
+    val =get_value("GRUB_TIMEOUT_STYLE=",issues,tmp_file)
     assert issues ==[]
     assert val=="menu"
     

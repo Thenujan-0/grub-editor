@@ -11,7 +11,8 @@ PATH = os.path.dirname(os.path.realpath(__file__))
 PATH = PATH[0:-5]
 # sys.path.append(PATH)
 
-from grubEditor.main import main
+from grubEditor import main
+from grubEditor.core import GRUB_CONF, conf_handler
 
 HOME=os.getenv("HOME")
 
@@ -91,7 +92,7 @@ def _test_add_changes_snapshot(qtbot,mw):
     for i in range(len(mw.configurations)):
         try:
             snapshots.remove(mw.comboBox_configurations.itemText(i))
-        except:
+        except Exception:
             if '(modified)' not in mw.comboBox_configurations.itemText(i):
                 assert mw.comboBox_configurations.itemText(i)==date_time
                 break
@@ -100,13 +101,11 @@ def _test_add_changes_snapshot(qtbot,mw):
     assert '(modified)' in mw.configurations[mw.comboBox_configurations.currentIndex()]
     
     new_snapshot=f'{main.DATA_LOC}/snapshots/{date_time}'
-    with open(new_snapshot) as f:
-        new_data = f.read()
-        
-    diff_out = subprocess.run([f"diff {new_snapshot} /etc/default/grub"],shell=True,capture_output=True).stdout.decode()
     
+    cmd = f"diff {new_snapshot} /etc/default/grub"
+    diff_out = subprocess.run([cmd],shell=True,capture_output=True).stdout.decode()
     lines = diff_out.splitlines()
-    print(lines)
+    print(lines,"lines")
     #first line would be something like 1c1 or 2c2
     assert lines[0][0]==lines[0][2]
     assert lines[0][1]=='c'
@@ -120,6 +119,9 @@ def test_btn_create_snapshot(qtbot):
     main.MainWindow=mw;
     mw.tabWidget.setCurrentIndex(1)
     qtbot.addWidget(mw)
+    
+    #this test only works if grub default is predefined
+    assert conf_handler.get(GRUB_CONF.GRUB_DEFAULT,[]) != "saved"
     
     #check if another configuration gets added when btn_create_snapshot is pressed
     snapshots_count =len(mw.configurations)-1
@@ -153,6 +155,7 @@ def test_btn_create_snapshot(qtbot):
     
     _test_ignore_changes(qtbot,mw,grub_default_ind)
     
+    sleep(1)
     
     
     qtbot.mouseClick(mw.create_snapshot_dialog.btn_add_changes_to_snapshot, QtCore.Qt.LeftButton)
@@ -235,7 +238,7 @@ def test_btn_view(qtbot):
     
     #mw stand for mainWindow
     mw=main.Ui()
-    main.MainWindow=mw;
+    main.MainWindow=mw
     
     #first find the view btn of the first snapshots
     #before that we need to create a snapshot if no snapshots exist

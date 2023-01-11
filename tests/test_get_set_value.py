@@ -43,16 +43,16 @@ HOME=os.getenv('HOME')
 def test_commented_lines(qtbot):
     tmp_file=create_tmp_file(commented_config)
     issues=[]
-    val =main.get_value("GRUB_DEFAULT=",issues,tmp_file)
+    val =main.conf_handler.get("GRUB_DEFAULT=",issues,tmp_file)
     assert val==None
     assert issues==[f"GRUB_DEFAULT= is commented out in {tmp_file}"]
     
-    main.set_value("GRUB_DEFAULT=","Garuda Linux",tmp_file)
+    main.conf_handler.set("GRUB_DEFAULT=","Garuda Linux",tmp_file)
     
     
     issues=[]
     print(tmp_file)
-    assert main.get_value("GRUB_DEFAULT=",issues,tmp_file)=='Garuda Linux'
+    assert main.conf_handler.get("GRUB_DEFAULT=",issues,tmp_file)=='Garuda Linux'
     
         
 config_fake_comment="""
@@ -74,7 +74,7 @@ def test_fake_comment_after_get(qtbot):
     tmp_file=create_tmp_file(config_fake_comment)
     
     issues = []
-    val = main.get_value("GRUB_DEFAULT=",issues,read_file=tmp_file)
+    val = main.conf_handler.get("GRUB_DEFAULT=",issues,read_file=tmp_file)
     assert val == 'Manjaro Linux'
     
     assert not issues
@@ -87,7 +87,7 @@ def test_quotation_marks_trailing_space(qtbot):
     tmp_file=create_tmp_file(test_config)
     
     issues=[]
-    val = main.get_value("GRUB_DEFAULT=",issues,tmp_file)
+    val = main.conf_handler.get("GRUB_DEFAULT=",issues,tmp_file)
     assert val=='0'
     
 
@@ -120,7 +120,7 @@ def test_fake_comment_before_get(qtbot):
         f.write(config_fake_comment_before)
     
     issues=[]
-    val =main.get_value("GRUB_DEFAULT=",issues,tmp_file)
+    val =main.conf_handler.get("GRUB_DEFAULT=",issues,tmp_file)
     assert issues ==[]
     assert val == 'Manjaro Linux'
     
@@ -139,7 +139,7 @@ def test_last_value(qtbot):
         f.write(config_last)
     
     issues=[]
-    val =main.get_value("GRUB_TIMEOUT_STYLE=",issues,tmp_file)
+    val =main.conf_handler.get("GRUB_TIMEOUT_STYLE=",issues,tmp_file)
     assert issues ==[]
     assert val=="menu"
 
@@ -153,13 +153,13 @@ def test_not_in_conf_val(qtbot):
         f.write(config_last)
     issues=[]
         
-    val =main.get_value("GRUB_CMDLINE_LINUX=",issues,tmp_file)
+    val =main.conf_handler.get("GRUB_CMDLINE_LINUX=",issues,tmp_file)
     assert issues ==[f"GRUB_CMDLINE_LINUX= was not found in {tmp_file}"]
     assert val == None
     
-    main.set_value("GRUB_CMDLINE_LINUX=","something fake",tmp_file)
+    main.conf_handler.set("GRUB_CMDLINE_LINUX=","something fake",tmp_file)
     issues=[]
-    new_val = main.get_value("GRUB_CMDLINE_LINUX=",issues,tmp_file)
+    new_val = main.conf_handler.get("GRUB_CMDLINE_LINUX=",issues,tmp_file)
     assert new_val =="something fake"
     assert issues==[]
     
@@ -168,7 +168,7 @@ def test_missing_double_quotes(qtbot):
     tmp_file=create_tmp_file(config)
     
     issues=[]
-    val =main.get_value("GRUB_DEFAULT=",issues,tmp_file)
+    val =main.conf_handler.get("GRUB_DEFAULT=",issues,tmp_file)
     
     assert issues == []
     assert val == "Manjaro Linux (Missing \")"
@@ -179,7 +179,7 @@ def test_grub_default_saved():
     tmp_file=create_tmp_file(config)
     
     issues=[]
-    val = main.get_value("GRUB_DEFAULT=",issues,tmp_file)
+    val = main.conf_handler.get("GRUB_DEFAULT=",issues,tmp_file)
     assert val=="saved"
     assert issues==[]
     
@@ -190,8 +190,8 @@ GRUB_DEFAULT="Manjaro Linux" """
 def test_remove_quotes(qtbot):
     tmp_file = create_tmp_file(CONFIG_QUOTED)
     issues = []
-    val = main.get_value("GRUB_DEFAULT=",issues,tmp_file,remove_quotes_=True)
+    val = main.conf_handler.get("GRUB_DEFAULT=",issues,tmp_file,remove_quotes_=True)
     assert val == "Manjaro Linux"
-    val = main.get_value("GRUB_DEFAULT=",issues,tmp_file,remove_quotes_=False)
+    val = main.conf_handler.get("GRUB_DEFAULT=",issues,tmp_file,remove_quotes_=False)
     assert val == "\"Manjaro Linux\""
     

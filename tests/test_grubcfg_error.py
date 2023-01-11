@@ -30,17 +30,17 @@ def test_grub_cfg_not_found(qtbot):
     
     
     
-# def test_grub_cfg_permission(qtbot):
+def test_grub_cfg_permission(qtbot):
     
-    # subprocess.run(['pkexec chmod 600 /boot/grub/grub.cfg'],shell=True)
+    subprocess.run(['pkexec chmod 600 /boot/grub/grub.cfg'],shell=True)
     
-    # mw=main.Ui()
-    # main.MainWindow=mw
-    # qtbot.addWidget(mw)
+    mw=main.Ui()
+    main.MainWindow=mw
+    qtbot.addWidget(mw)
     
-    # assert mw.dialog_cfg_permission.isVisible()
+    assert mw.dialog_cfg_permission.isVisible()
     
-    # subprocess.run(['pkexec chmod 644 /boot/grub/grub.cfg'],shell=True)
+    subprocess.run(['pkexec chmod 644 /boot/grub/grub.cfg'],shell=True)
     
     
         
