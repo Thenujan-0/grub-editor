@@ -2,7 +2,7 @@
 Categories=Utility;System;
 Comment[en_US]=GUI application to edit grub configurations
 Comment=GUI application to edit grub configurations
-Exec=/opt/grub-editor/__main__.py
+Exec=/opt/grub-editor/grub-editor.py
 GenericName[en_US]=
 GenericName=
 Icon=grub-editor
