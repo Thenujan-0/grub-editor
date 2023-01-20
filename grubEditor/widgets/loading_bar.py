@@ -7,7 +7,7 @@ from PyQt5.QtGui import QPainter, QColor, QFont,QPalette,QPolygonF,QBrush
 from PyQt5.QtCore import Qt , QPointF,QRectF,QObject,pyqtSignal,QRunnable,pyqtSlot,QThreadPool,QTimer
 import traceback
 from time import sleep
-
+from functools import partial
 
 
 class WorkerSignals(QObject):
@@ -82,15 +82,18 @@ class LoadingBar(QWidget):
         self.position=20
         self.startWorker(self.move_loading_bar)
         self.loading_increasing=True
+        self.interruptRequested = False
         
         
-        # self.timer=QTimer()
-        # self.timer.timeout.connect(self.move_loading_bar)
-        # self.timer.start(500)
+        def onDestroyed(self):
+            self.interruptRequested = True
+
+        #For some reason it doesn't work if i directly make onDestroyed a method of this class
+        self.destroyed.connect(partial(onDestroyed,self))
     
     def move_loading_bar(self):
         """ move the loading bar back and forth by changing the value of self.position """
-        while True:
+        while not self.interruptRequested:
             # print('moving loading bar',self.position)
             sleep(0.015)
             if self.position ==100:
@@ -103,7 +106,6 @@ class LoadingBar(QWidget):
             else:
                 self.position-=1
 
-            qp=QPainter()
             
             #Error might occur if the LoadingBar widget is deleted so to catch that
             try:
