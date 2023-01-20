@@ -827,9 +827,9 @@ color:black;
         subprocess.run([f'touch {CACHE_LOC}/temp.txt'],shell=True)
 
         index =self.comboBox_configurations.currentIndex()
-        total=len(self.configurations)
+        currentValue=self.configurations[index]
         
-        if index ==0 or (index==total-1 and "(modified)" in self.configurations[-1]):
+        if currentValue == GRUB_CONF_LOC or currentValue == GRUB_CONF_LOC+"(modified)":
             target_file_copy = GRUB_CONF_LOC
         else:
             target_file_copy =f'{DATA_LOC}/snapshots/'+self.configurations[index]
