@@ -261,7 +261,7 @@ class Ui(QtWidgets.QMainWindow):
         except PermissionError:
             
             def change_permission():
-                subprocess.run(["pkexec chmod 666 /boot/grub/grub.cfg"],shell=True)
+                subprocess.run(["pkexec chmod 644 /boot/grub/grub.cfg"],shell=True)
             
             def btn_ok_callback():
                 worker=self.startWorker(change_permission)
