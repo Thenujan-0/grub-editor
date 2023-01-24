@@ -103,7 +103,7 @@ class CONF_HANDLER():
                     val.replace(" >",">")
                     
                 if val !="saved" :
-                    if val[0]=="\"" and val[-1]=='"':
+                    if (val[0]=="\"" and val[-1]=='"') or (val[0]=="'" and val[0] == "'"):
                         val=val[1:-1]
                     elif not val.replace(" >","").isdigit():
                         val+=" (Missing \")"
