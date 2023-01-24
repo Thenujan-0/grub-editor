@@ -219,7 +219,7 @@ def test_btn_delete_snapshot(qtbot):
     sleep(1)
     assert main.GRUB_CONF_LOC+"(modified)"== mw.configurations[mw.comboBox_configurations.currentIndex()]
     
-    assert mw.VLayout_snapshot.itemAt(new_snapshot_ind).itemAt(3).widget() != btn_delete
+    assert mw.VLayout_snapshot.itemAt(new_snapshot_ind) == None
 
     assert '(modified)' in mw.configurations[mw.comboBox_configurations.currentIndex()]
     
@@ -299,7 +299,7 @@ def test_btn_set(qtbot):
     row=mw.VLayout_snapshot.itemAt(0).layout()
     btn_set = row.itemAt(4).widget()
     snapshot_name=row.itemAt(0).widget().text()
-    assert main.file_loc==main.GRUB_CONF_LOC
+    assert main.conf_handler.current_file==main.GRUB_CONF_LOC
     qtbot.mouseClick(btn_set,QtCore.Qt.LeftButton)
     
     assert mw.lbl_status.text() =="Waiting for authentication"

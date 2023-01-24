@@ -38,6 +38,7 @@ def test_grub_cfg_permission(qtbot):
     main.MainWindow=mw
     qtbot.addWidget(mw)
     
+    sleep(1)
     assert mw.dialog_cfg_permission.isVisible()
     
     subprocess.run(['pkexec chmod 644 /boot/grub/grub.cfg'],shell=True)

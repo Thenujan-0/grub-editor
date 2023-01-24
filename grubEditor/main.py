@@ -223,6 +223,7 @@ class Ui(QtWidgets.QMainWindow):
         #a window to show suggestios regarding grub configuration
         self.set_recommendations_window=None
         self.dialog_invalid_default_entry=None
+        self.dialog_cfg_permission = None
 
         #handle resize event it is used to define the maximum length of snapshot labels
         self.resized.connect(self.someFunction)
