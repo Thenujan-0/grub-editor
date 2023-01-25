@@ -44,11 +44,14 @@ if size>5*10**6:
 def except_hook(_,exception,__):
 	# sys.__excepthook__(cls, exception, traceback)
 	# logging.error(traceback.format_exc())
-    text = "".join(traceback.format_exception(exception))
-    logging.error("Unhandled exception: %s", text)  
-    #escape quotes in text
-    text=text.replace("'","\'")
-    cmd=f"python3 {PATH}/grubEditor/widgets/error_dialog.py 'An Exception occured' \"{text}\""
+    error_text = "".join(traceback.format_exception(exception))
+    logging.error("Unhandled exception: %s", error_text)  
+    
+    #escape single quotes
+    error_text = error_text.replace("'","''")
+    
+    print(error_text) #Incase error_dialog fails
+    cmd=f"python3 {PATH}/grubEditor/widgets/error_dialog.py 'An Exception occured' '{error_text}'"
     subprocess.Popen([cmd],shell=True)
 
 
@@ -64,7 +67,9 @@ if __name__ == '__main__':
         print(PATH)
         main()
     except Exception as e:
-        print("Caught exception")
-        cmd=f"python3 {PATH}/grubEditor/widgets/error_dialog.py 'An Exception occured' \"{traceback.format_exc()}\""
+        print(traceback.format_exc()) #Incase error_dialog fails
+        error_text = traceback.format_exc()
+        error_text=error_text.replace("'","''")
+        cmd=f"python3 {PATH}/grubEditor/widgets/error_dialog.py 'An Exception occured' '{error_text}'"
         subprocess.Popen(cmd,shell=True)
         exit(1)
